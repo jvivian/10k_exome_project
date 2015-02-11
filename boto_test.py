@@ -46,11 +46,13 @@ def launch_instance(ec2, kp_name, sec_group_name):
     ).instances[0]
 
     while instance.state != 'running':
-        print 'Waiting for instance: {}, at DNS: {} to start'.format(instance.id, instance.dns_name)
+        sys.stdout.write('Waiting for instance: {}, at DNS: {} to start'.format(instance.id,
+                                                                                str(instance.dns_name).split('.')[0]))
         time.sleep(5)
         instance.update()
 
-    print 'Success! EC2 Instance Launched \nInstance_Type: {} in {}'.format(instance.instance_type, instance.placement)
+    sys.stdout.write('\nSuccess! EC2 Instance Launched \nInstance_Type: {} in {}'.format(instance.instance_type,
+                                                                                         instance.placement))
 
 
 def main():
@@ -69,7 +71,7 @@ def main():
     check_key_pair(ec2, kp_name)
 
     # Launch the EC2-Instance
-    #launch_instance(ec2, kp_name, sec_group_name)
+    launch_instance(ec2, kp_name, sec_group_name)
 
 
 if __name__ == "__main__":
@@ -78,4 +80,4 @@ if __name__ == "__main__":
     ''' Code snippet that handles import of key_pair '''
     # with open(os.path.expanduser('~/.ssh/aws.pub'), 'r') as f:
     # material = f.read()
-    #ec2.import_key_pair(key_name, material)
+    # ec2.import_key_pair(key_name, material)
