@@ -8,6 +8,7 @@ Boto test script for accessing the Amazon EC2 cloud service.
 import time
 import sys
 import boto.ec2
+import subprocess
 from boto.exception import EC2ResponseError
 
 
@@ -36,27 +37,33 @@ def check_key_pair(ec2, kp_name):
         sys.exit(1)
 
 
-def launch_instance(ec2, kp_name, sec_group_name):
+def launch_instance(ec2, ami, itype, kp_name, sec_group_name):
     """ Launches the AWS EC2 Instance """
+
+
     instance = ec2.run_instances(
-        'ami-dfc39aef',
+        ami,
         key_name=kp_name,
-        instance_type='t2.micro',
+        instance_type=itype,
         security_groups=[sec_group_name]
     ).instances[0]
 
     while instance.state != 'running':
-        sys.stdout.write('Waiting for instance: {}, at DNS: {} to start'.format(instance.id,
+        sys.stdout.write('Waiting for instance: {}, at DNS: {} to start\n'.format(instance.id,
                                                                                 str(instance.dns_name).split('.')[0]))
         time.sleep(5)
         instance.update()
 
     sys.stdout.write('\nSuccess! EC2 Instance Launched \nInstance_Type: {} in {}'.format(instance.instance_type,
                                                                                          instance.placement))
+    return instance
 
+def ssh_to_ec2(instance):
+    """ SSH into the EC2 Instance """
+    subprocess.Popen(['ssh', instance.dns_name])
 
 def main():
-    # Create an EC2 object
+    # Create an EC2 Object
     ec2 = boto.ec2.connect_to_region('us-west-2')
 
     # Define Key-Pair and Security Group names
@@ -71,7 +78,12 @@ def main():
     check_key_pair(ec2, kp_name)
 
     # Launch the EC2-Instance
-    launch_instance(ec2, kp_name, sec_group_name)
+    ami = 'ami-dfc39aef'
+    itype = 't2.medium'
+    instance = launch_instance(ec2, ami, itype, kp_name, sec_group_name)
+
+    # SSH into the instance
+    #ssh_to_ec2(instance)
 
 
 if __name__ == "__main__":
