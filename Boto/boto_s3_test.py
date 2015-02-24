@@ -40,7 +40,7 @@ def create_sqs_queue(keys, q_name='john-test'):
 
 
 def get_sqs_messages(q_name='john-test'):
-    """ Retrieve messages """
+    """ Retrieve messages -- Mostly a test function """
 
     conn = boto.sqs.connect_to_region('us-west-2')
     q = conn.get_queue(q_name)
@@ -52,6 +52,8 @@ def get_sqs_messages(q_name='john-test'):
 
     for i in all_messages:
         print i.get_body()
+
+    return all_messages
 
 
 
