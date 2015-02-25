@@ -12,6 +12,7 @@ into discrete steps.
 import json
 import xml.etree.ElementTree as ET
 import os
+import fnmatch
 import argparse
 
 def parse_arguments():
@@ -21,33 +22,40 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def fetch_files(dir):
-    '''Fetches XML and .GA file'''
-    tool_xmls = []
-    gw_files = []
-    for root, folder, files in os.walk( dir ):
-        gw = [x for x in files if '.ga' in x]
-        if gw:
-            gw_files.append( gw )
-        xmls = [x for x in files if '.xml' in x]
-        if xmls:
-            tool_xmls.append( xmls )
-    # Flatten and return
-    return [i for sublist in tool_xmls for i in sublist], [i for sublist in gw for i in sublist]
+def find_files(pattern, path):
+    '''Find file in path'''
+    result = []
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            if fnmatch.fnmatch(name, pattern):
+                result.append(os.path.join(root, name))
+    return result
 
+
+def parse_gal_workflow( gal_wflow ):
+    '''Parses Galaxy Workflow'''
+    print gal_wflow
+    json_data=open( gal_wflow[0] )
+    parsed = json.load( json_data )
+
+    return parsed['steps']
 
 def main():
     args = parse_arguments()
 
     print "\nGalaxy Workflow Dir:  {}".format( args.galaxy_dir )
 
-    tool_xmls, gal_wflow = fetch_files(args.galaxy_dir)
+    # Fetch Workflow and XML file names
+    tool_xmls = find_files('*.xml', args.galaxy_dir)
+    gal_wflow = find_files('*Slim.ga', args.galaxy_dir)  # Change to *.ga when appropriate
+
+    # Parse Galaxy Workflow
+    parse_gal_workflow( gal_wflow )
 
 
-    
-    tool_xmls = [item for sublist in tool_xmls for item in sublist]
-    print gw_file
-    print tool_xmls
+
+
+
 
 if __name__ == '__main__':
     main()
