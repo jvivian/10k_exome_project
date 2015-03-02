@@ -12,7 +12,10 @@
 #############
 #   Tools   #
 #############
+echo
 echo Downloading Tools via Apt-get
+echo
+sleep 3
 
 sudo apt-get update -y
 sudo apt-get install -y samtools
@@ -23,12 +26,16 @@ sudo apt-get install -y git
 sudo apt-get install -y python-pip
 sudo pip install -y PyVCF
 
-echo Making data and tool directories
+
 # Make data and tool dirs
 mkdir /home/ubuntu/data
 mkdir /home/ubuntu/tools
 
+echo
 echo Obtaining .jars and tools from S3
+echo
+sleep 3
+
 # GenomeAnalysisTK.jar
 cd /home/ubuntu/tools
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/GenomeAnalysisTK.jar
@@ -45,14 +52,20 @@ cd /home/ubuntu
 ############
 #   Data   #
 ############
+echo
 echo Downloading Precursor Data
+echo
+sleep 3
+
 sudo git clone https://github.com/ucscCancer/pcawg_tools
 sudo mv pcawg_tools/data/download.sh /home/ubuntu/data
-sudo rm -f pcawg_tools # =)
-sudo ./data/download.sh
-gunzip data/genome.fa.gz
-sudo rm -f data/genome.fa.gz
-
+sudo rm -rf pcawg_tools # =)
+cd data/
+sudo chmod u+x download.sh
+sudo ./download.sh
+gunzip genome.fa.gz
+sudo rm -rf genome.fa.gz
+cd /home/ubuntu
 
 
 
