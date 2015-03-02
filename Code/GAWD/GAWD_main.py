@@ -4,8 +4,12 @@
 """
 Galaxy Automatic Workflow Decomposer
 
+This project has been put on hold due to non-standardized workflow construction. [3-2-15]
+
 Accepts a Galaxy Workflow (.ga) and tool-descriptors (.xml) to decompose a galaxy's graph structure
 into discrete steps.
+
+
 
 -==-
 
