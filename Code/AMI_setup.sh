@@ -1,4 +1,6 @@
 #!/bin/bash
+# John Vivian
+# 3-2-15
 
 # This script will prepare an Amazon AMI with all of the tools and data necessary to run the pipeline.
 # Note: Remove as many possible "SUDO"s
