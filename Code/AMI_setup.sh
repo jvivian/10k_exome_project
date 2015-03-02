@@ -1,10 +1,16 @@
 #!/bin/bash
 
 # This script will prepare an Amazon AMI with all of the tools and data necessary to run the pipeline.
+# Note: Remove as many possible "SUDO"s
+
+# Schema:  Tools will be run from command line or placed in /home/ubuntu.
+# Schema:  Input data will be in in /home/ubuntu/data
+# Schema:  It is assumed that all scripts written for this AMI will be run from /home/ubuntu
 
 #############
 #   Tools   #
 #############
+
 
 FILE="/home/profile/.profile" # Check?
 
@@ -12,7 +18,7 @@ sudo apt-get update -y
 sudo apt-get install -y samtools
 sudo apt-get install -y picard-tools
 sudo apt-get install -y wget
-sudo apt-get install -y java
+sudo apt-get install -y install openjdk-7-jre
 sudo apt-get install -y git
 sudo apt-get install -y python-pip
 sudo pip install -y PyVCF
@@ -55,5 +61,9 @@ sudo git clone https://github.com/ucscCancer/pcawg_tools
 sudo mv pcawg_tools/data /home/ubuntu
 sudo rm -f pcawg_tools
 sudo ./data/download.sh
+gunzip genome.fa.gz
+sudo rm -f genome.fa.gz
+
+
 
 
