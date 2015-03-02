@@ -25,13 +25,13 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="GAWD_main.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="GAWD_main.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/GAWD/GAWD_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="405" max-vertical-offset="1725">
-              <caret line="27" column="0" selection-start-line="27" selection-start-column="0" selection-end-line="27" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.87586206" vertical-offset="1075" max-vertical-offset="1800">
+              <caret line="114" column="0" selection-start-line="114" selection-start-column="0" selection-end-line="114" selection-end-column="0" />
               <folding>
-                <element signature="e#314#325#0" expanded="true" />
+                <element signature="e#407#418#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -40,18 +40,18 @@
       <file leaf-file-name="AMI_setup.sh" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AMI_setup.sh">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1125">
-              <caret line="7" column="92" selection-start-line="7" selection-start-column="92" selection-end-line="7" selection-end-column="92" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="945">
+              <caret line="2" column="5" selection-start-line="2" selection-start-column="5" selection-end-line="2" selection-end-column="5" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="gatk_indel.sh" pinned="false" current-in-tab="true">
+      <file leaf-file-name="gatk_indel.sh" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/gatk_indel.sh">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.33103448" vertical-offset="0" max-vertical-offset="725">
-              <caret line="16" column="55" selection-start-line="16" selection-start-column="55" selection-end-line="16" selection-end-column="55" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="540">
+              <caret line="0" column="11" selection-start-line="0" selection-start-column="11" selection-end-line="0" selection-end-column="11" />
               <folding />
             </state>
           </provider>
@@ -62,9 +62,9 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/GAWD/GAWD_main.py" />
-        <option value="$PROJECT_DIR$/AMI_setup.sh" />
         <option value="$PROJECT_DIR$/gatk_indel.sh" />
+        <option value="$PROJECT_DIR$/AMI_setup.sh" />
+        <option value="$PROJECT_DIR$/GAWD/GAWD_main.py" />
       </list>
     </option>
   </component>
@@ -401,7 +401,7 @@
         <state vertical-scroll-proportion="0.0" vertical-offset="405" max-vertical-offset="1725">
           <caret line="27" column="0" selection-start-line="27" selection-start-column="0" selection-end-line="27" selection-end-column="0" />
           <folding>
-            <element signature="e#314#325#0" expanded="true" />
+            <element signature="e#407#418#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -427,7 +427,7 @@
         <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1530">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#314#325#0" expanded="true" />
+            <element signature="e#407#418#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -439,29 +439,29 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/GAWD/GAWD_main.py">
+    <entry file="file://$PROJECT_DIR$/gatk_indel.sh">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="405" max-vertical-offset="1725">
-          <caret line="27" column="0" selection-start-line="27" selection-start-column="0" selection-end-line="27" selection-end-column="0" />
-          <folding>
-            <element signature="e#314#325#0" expanded="true" />
-          </folding>
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="540">
+          <caret line="0" column="11" selection-start-line="0" selection-start-column="11" selection-end-line="0" selection-end-column="11" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/AMI_setup.sh">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1125">
-          <caret line="7" column="92" selection-start-line="7" selection-start-column="92" selection-end-line="7" selection-end-column="92" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="945">
+          <caret line="2" column="5" selection-start-line="2" selection-start-column="5" selection-end-line="2" selection-end-column="5" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/gatk_indel.sh">
+    <entry file="file://$PROJECT_DIR$/GAWD/GAWD_main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.33103448" vertical-offset="0" max-vertical-offset="725">
-          <caret line="16" column="55" selection-start-line="16" selection-start-column="55" selection-end-line="16" selection-end-column="55" />
-          <folding />
+        <state vertical-scroll-proportion="0.87586206" vertical-offset="1075" max-vertical-offset="1800">
+          <caret line="114" column="0" selection-start-line="114" selection-start-column="0" selection-end-line="114" selection-end-column="0" />
+          <folding>
+            <element signature="e#407#418#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
