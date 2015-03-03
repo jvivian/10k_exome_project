@@ -54,6 +54,7 @@ sleep 3
 
 ### From: https://github.com/ucscCancer/pcawg_tools/blob/master/data/download.sh
 #genomic data
+cd /home/ubuntu/data
 wget -r ftp://ftp.sanger.ac.uk/pub/project/PanCancer/
 mv ftp.sanger.ac.uk/pub/project/PanCancer/* ./
 
@@ -84,7 +85,6 @@ zcat 1000G_phase1.indels.hg19.sites.vcf.gz \
 
 
 # Cleanup
-cd /home/ubuntu/data
 rm genome.fa.gz.64.sa
 rm genome.fa.gz.64.pac
 rm genome.fa.gz.64.bwt
