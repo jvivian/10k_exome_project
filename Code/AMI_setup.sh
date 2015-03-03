@@ -64,7 +64,25 @@ cd data/
 sudo chmod u+x download.sh
 sudo ./download.sh
 gunzip genome.fa.gz
-sudo rm -rf genome.fa.gz
+
+# Fix chromosome naming convention
+zcat Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz \
+| perl -pe 's/^chr//' > Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
+
+zcat 1000G_phase1.indels.hg19.sites.vcf.gz \
+| perl -pe 's/^chr//' > 1000G_phase1.indels.hg19.sites.fixed.vcf
+
+# Cleanup
+sudo rm -rf ftp.sanger.ac.uk/
+rm -f genome.fa.gz
+rm -f genome.fa.gz.64.sa
+rm -f genome.fa.gz.64.pac
+rm -f genome.fa.gz.64.bwt
+rm -f genome.fa.gz.64.ann
+rm -f genome.fa.gz.64.amb
+rm -f 1000G_phase1.indels.hg19.sites.vcf.gz
+rm -f Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
+rm -f genome.fa.gz.fai
 cd /home/ubuntu
 
 
