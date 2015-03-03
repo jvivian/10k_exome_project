@@ -28,8 +28,8 @@
       <file leaf-file-name="AMI_setup.sh" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AMI_setup.sh">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.5586207" vertical-offset="885" max-vertical-offset="1755">
-              <caret line="86" column="9" selection-start-line="86" selection-start-column="9" selection-end-line="86" selection-end-column="9" />
+            <state vertical-scroll-proportion="0.50344825" vertical-offset="1060" max-vertical-offset="1785">
+              <caret line="95" column="0" selection-start-line="95" selection-start-column="0" selection-end-line="95" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -529,8 +529,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AMI_setup.sh">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.5586207" vertical-offset="885" max-vertical-offset="1755">
-          <caret line="86" column="9" selection-start-line="86" selection-start-column="9" selection-end-line="86" selection-end-column="9" />
+        <state vertical-scroll-proportion="0.50344825" vertical-offset="1060" max-vertical-offset="1785">
+          <caret line="95" column="0" selection-start-line="95" selection-start-column="0" selection-end-line="95" selection-end-column="0" />
           <folding />
         </state>
       </provider>

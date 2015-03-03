@@ -93,7 +93,7 @@ rm genome.fa.gz.64.amb
 rm 1000G_phase1.indels.hg19.sites.vcf.gz
 rm Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
 rm genome.fa.gz.fai
-cd /home/ubuntu
+
 
 
 #################################
@@ -102,6 +102,8 @@ cd /home/ubuntu
 echo
 echo Preparing Reference Genome
 echo
+sleep 3
+
 gunzip /home/ubuntu/data/genome.fa.gz
 cd /home/ubuntu/tools
 samtools faidx $DATA/genome.fa
