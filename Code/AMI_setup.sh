@@ -1,9 +1,9 @@
 #!/bin/bash
+set -ex
 # John Vivian
 # 3-2-15
 
 # This script will prepare an Amazon AMI with all of the tools and data necessary to run the pipeline.
-# Note: Remove as many possible "SUDO"s
 
 # Schema:  Tools will be run from command line or placed in /home/ubuntu/tools.
 # Schema:  Input data will be in in /home/ubuntu/data
@@ -18,13 +18,8 @@ echo
 sleep 3
 
 sudo apt-get update -y
-sudo apt-get install -y samtools
-sudo apt-get install -y picard-tools
-sudo apt-get install -y wget
-sudo apt-get install -y install openjdk-7-jre
-sudo apt-get install -y git
-sudo apt-get install -y python-pip
-sudo pip install -y PyVCF
+sudo apt-get install -y samtools wget openjdk-7-jre git python-pip
+sudo pip install PyVCF
 
 
 # Make data and tool dirs
@@ -57,13 +52,26 @@ echo Downloading Precursor Data
 echo
 sleep 3
 
-sudo git clone https://github.com/ucscCancer/pcawg_tools
-sudo mv pcawg_tools/data/download.sh /home/ubuntu/data
-sudo rm -rf pcawg_tools # =)
-cd data/
-sudo chmod u+x download.sh
-sudo ./download.sh
-gunzip genome.fa.gz
+### From: https://github.com/ucscCancer/pcawg_tools/blob/master/data/download.sh
+#genomic data
+wget -r ftp://ftp.sanger.ac.uk/pub/project/PanCancer/
+mv ftp.sanger.ac.uk/pub/project/PanCancer/* ./
+
+# Remove unnecessary folder
+rm -rf ftp.sanger.ac.uk/
+
+#data for ContEst
+wget http://www.broadinstitute.org/~gsaksena/arrayfree_ContEst/arrayfree_ContEst/SNP6.hg19.interval_list
+wget http://www.broadinstitute.org/~gsaksena/arrayfree_ContEst/arrayfree_ContEst/hg19_population_stratified_af_hapmap_3.3.fixed.vcf
+wget http://www.broadinstitute.org/~gsaksena/arrayfree_ContEst/arrayfree_ContEst/gaf_20111020+broad_wex_1.1_hg19.bed
+
+#data for MuTect
+wget http://www.broadinstitute.org/cancer/cga/sites/default/files/data/tools/mutect/b37_cosmic_v54_120711.vcf
+wget http://www.broadinstitute.org/cancer/cga/sites/default/files/data/tools/mutect/dbsnp_132_b37.leftAligned.vcf.gz
+gunzip dbsnp_132_b37.leftAligned.vcf.gz
+
+wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/2.8/hg19/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
+wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/2.8/hg19/1000G_phase1.indels.hg19.sites.vcf.gz
 
 # Fix chromosome naming convention
 zcat Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz \
@@ -72,19 +80,32 @@ zcat Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz \
 zcat 1000G_phase1.indels.hg19.sites.vcf.gz \
 | perl -pe 's/^chr//' > 1000G_phase1.indels.hg19.sites.fixed.vcf
 
+### End From: https://github.com/ucscCancer/pcawg_tools/blob/master/data/download.sh
+
+
 # Cleanup
-sudo rm -rf ftp.sanger.ac.uk/
-rm -f genome.fa.gz
-rm -f genome.fa.gz.64.sa
-rm -f genome.fa.gz.64.pac
-rm -f genome.fa.gz.64.bwt
-rm -f genome.fa.gz.64.ann
-rm -f genome.fa.gz.64.amb
-rm -f 1000G_phase1.indels.hg19.sites.vcf.gz
-rm -f Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
-rm -f genome.fa.gz.fai
+cd /home/ubuntu/data
+rm genome.fa.gz.64.sa
+rm genome.fa.gz.64.pac
+rm genome.fa.gz.64.bwt
+rm genome.fa.gz.64.ann
+rm genome.fa.gz.64.amb
+rm 1000G_phase1.indels.hg19.sites.vcf.gz
+rm Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
+rm genome.fa.gz.fai
 cd /home/ubuntu
 
+
+#################################
+#   Prepare Reference Genome    #
+#################################
+echo
+echo Preparing Reference Genome
+echo
+gunzip /home/ubuntu/data/genome.fa.gz
+cd /home/ubuntu/tools
+samtools faidx $DATA/genome.fa
+java -jar CreateSequenceDictionary.jar R=$DATA/genome.fa O=$DATA/genome.dict
 
 
 
