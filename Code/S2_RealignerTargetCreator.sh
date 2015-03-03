@@ -17,7 +17,7 @@ IFS='.' read -a array <<< $INPUT
 # nt = # of threads -- talk to Hannes about parallelism
 echo "
 
-Realigner Target Creator for Normal.bam
+Realigner Target Creator
 
 "
 java -Xmx${MEM}g -jar GenomeAnalysisTK.jar \

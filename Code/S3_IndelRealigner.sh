@@ -13,10 +13,10 @@ INPUT=$1
 # Parse input into array
 IFS='.' read -a array <<< $INPUT
 
-# Indeal Realignment
+# Indel Realignment
 echo "
 
-Indel Realigner for Normal.bam
+Indel Realignment
 
 "
 java -Xmx${MEM}g -jar GenomeAnalysisTK.jar \
