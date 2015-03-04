@@ -19,7 +19,7 @@ sleep 3
 
 sudo apt-get update -y
 sudo apt-get install -y samtools wget openjdk-7-jre git python-pip
-pip install PyVCF
+sudo pip install PyVCF
 
 
 # Make data and tool dirs
