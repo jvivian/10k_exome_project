@@ -95,7 +95,6 @@ rm Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
 rm genome.fa.gz.fai
 
 
-
 #################################
 #   Prepare Reference Genome    #
 #################################
