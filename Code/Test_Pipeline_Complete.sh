@@ -168,7 +168,7 @@ java -Xmx4g -jar muTect-1.1.5.jar \
 --intervals $DATA/SNP6.hg19.interval_list \
 --input_file:normal $DATA/normal.bqsr.bam \
 --input_file:tumor $DATA/tumour.bqsr.bam \
---fraction_contamination 1.8 \
+--fraction_contamination $CONTAM\
 --out $DATA/MuTect.out \
 --coverage_file $DATA/MuTect.coverage \
 --vcf $DATA/MuTect.pair8.vcf
