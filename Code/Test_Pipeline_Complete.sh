@@ -13,6 +13,7 @@ TUMOUR="testexome.pair8.tumour.bam"
 cd /home/ubuntu/data
 wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/testexome.pair8.normal.bam
 wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/testexome.pair8.tumour.bam
+cd /home/ubuntu/tools
 
 # Create Index Files from Input Data ====================================================
 echo "
