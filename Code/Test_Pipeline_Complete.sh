@@ -4,6 +4,7 @@ set -ex
 # 3-2-15
 
 DATA="/home/ubuntu/data"
+INT="/home/ubuntu/intermediates"
 NORMAL="testexome.pair8.normal.bam"
 TUMOUR="testexome.pair8.tumour.bam"
 
@@ -84,6 +85,11 @@ java -Xmx15g -jar GenomeAnalysisTK.jar \
 -maxReads 720000 -maxInMemory 5400000 \
 -o $DATA/tumour.indel.bam
 
+# File Cleanup to keep size down
+rm $DATA/$TUMOUR
+rm $DATA/$NORMAL
+
+
 # Base Recalibrator =====================================================================
 echo "
 
@@ -133,6 +139,10 @@ java -jar GenomeAnalysisTK.jar \
 -I $DATA/tumour.indel.bam \
 -BQSR $DATA/tumour.recal_data.table \
 -o $DATA/tumour.bqsr.bam
+
+# File Cleanup to keep size down
+rm $DATA/normal.indel.bam
+rm $DATA/tumour.indel.bam
 
 # Contest ArrayFree ====================================================================
 echo "
