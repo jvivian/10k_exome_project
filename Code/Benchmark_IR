@@ -1,0 +1,66 @@
+#!/bin/bash
+
+
+# File to benchmark tools that are part of the pipeline
+# { echo IR; time sleep 3; } >>test.txt 2>> test.txt
+
+cd /home/ubuntu/tools
+
+# Sequential
+echo "
+SEQUENTIAL
+" >> benchmark_IR.txt
+
+{ echo Sequential IR Normal; time java -Xmx15g -jar GenomeAnalysisTK.jar \
+-T IndelRealigner \
+-R $DATA/genome.fa \
+-I $DATA/$NORMAL  \
+-targetIntervals $DATA/output.normal.intervals \
+--downsampling_type NONE \
+-known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
+-known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+-maxReads 720000 -maxInMemory 5400000 \
+-o $DATA/normal.indel.bam; } >> benchmark_IR.txt 2>> benchmark_IR.txt
+
+{ echo Sequential IR Tumour; time java -Xmx15g -jar GenomeAnalysisTK.jar \
+-T IndelRealigner \
+-R $DATA/genome.fa \
+-I $DATA/$NORMAL  \
+-targetIntervals $DATA/output.normal.intervals \
+--downsampling_type NONE \
+-known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
+-known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+-maxReads 720000 -maxInMemory 5400000 \
+-o $DATA/normal.indel.bam; } >> benchmark_IR.txt 2>> benchmark_IR.txt
+
+
+# remove files
+rm ../data/normal.indel.bam
+rm ../data/normal.indel.bai
+rm ../data/tumour.indel.bam
+rm ../data/tumour.indel.bai
+
+# Parallel
+echo "
+Parallel
+" >> benchmark_IR.txt
+
+{echo Parallel IR Combined; time java -Xmx7g -jar GenomeAnalysisTK.jar \
+-T IndelRealigner \
+-R $DATA/genome.fa \
+-I $DATA/$NORMAL  \
+-targetIntervals $DATA/output.normal.intervals \
+--downsampling_type NONE \
+-known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
+-known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+-maxReads 720000 -maxInMemory 5400000 \
+-o $DATA/normal.indel.bam & java -Xmx7g -jar GenomeAnalysisTK.jar \
+-T IndelRealigner \
+-R $DATA/genome.fa \
+-I $DATA/$NORMAL  \
+-targetIntervals $DATA/output.normal.intervals \
+--downsampling_type NONE \
+-known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
+-known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+-maxReads 720000 -maxInMemory 5400000 \
+-o $DATA/normal.indel.bam & wait; }
