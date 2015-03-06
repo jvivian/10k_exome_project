@@ -3,8 +3,9 @@
 
 # File to benchmark tools that are part of the pipeline
 # { echo IR; time sleep 3; } >>test.txt 2>> test.txt
-
+set -ex
 cd /home/ubuntu/tools
+DATA="/home/ubuntu/data/"
 
 # Sequential
 echo "
@@ -14,7 +15,7 @@ SEQUENTIAL
 { echo Sequential IR Normal; time java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
 -R $DATA/genome.fa \
--I $DATA/$NORMAL  \
+-I $DATA/testexome.pair8.normal.bam  \
 -targetIntervals $DATA/output.normal.intervals \
 --downsampling_type NONE \
 -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
@@ -25,13 +26,13 @@ SEQUENTIAL
 { echo Sequential IR Tumour; time java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
 -R $DATA/genome.fa \
--I $DATA/$NORMAL  \
+-I $DATA/testexome.pair8.tumour.bam  \
 -targetIntervals $DATA/output.normal.intervals \
 --downsampling_type NONE \
 -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
 -maxReads 720000 -maxInMemory 5400000 \
--o $DATA/normal.indel.bam; } >> benchmark_IR.txt 2>> benchmark_IR.txt
+-o $DATA/tumour.indel.bam; } >> benchmark_IR.txt 2>> benchmark_IR.txt
 
 
 # remove files
@@ -45,22 +46,24 @@ echo "
 Parallel
 " >> benchmark_IR.txt
 
-{echo Parallel IR Combined; time java -Xmx7g -jar GenomeAnalysisTK.jar \
+{ echo Parallel IR Combined; time java -Xmx7g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
 -R $DATA/genome.fa \
--I $DATA/$NORMAL  \
+-I $DATA/testexome.pair8.normal.bam  \
 -targetIntervals $DATA/output.normal.intervals \
 --downsampling_type NONE \
 -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
 -maxReads 720000 -maxInMemory 5400000 \
--o $DATA/normal.indel.bam & java -Xmx7g -jar GenomeAnalysisTK.jar \
+-o $DATA/normal.indel.bam &
+java -Xmx7g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
 -R $DATA/genome.fa \
--I $DATA/$NORMAL  \
+-I $DATA/testexome.pair8.tumour.bam  \
 -targetIntervals $DATA/output.normal.intervals \
 --downsampling_type NONE \
 -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
 -maxReads 720000 -maxInMemory 5400000 \
--o $DATA/normal.indel.bam & wait; }
+-o $DATA/tumour.indel.bam &
+  wait; }  >> benchmark_IR.txt 2>> benchmark_IR.txt
