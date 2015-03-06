@@ -4,7 +4,6 @@ set -ex
 # 3-2-15
 
 DATA="/home/ubuntu/data"
-INT="/home/ubuntu/intermediates"
 NORMAL="testexome.pair8.normal.bam"
 TUMOUR="testexome.pair8.tumour.bam"
 
@@ -12,8 +11,9 @@ TUMOUR="testexome.pair8.tumour.bam"
 
 # Obtain BAMS
 cd /home/ubuntu/data
-wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/testexome.pair8.normal.bam
-wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/testexome.pair8.tumour.bam
+wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/$NORMAL \
+& wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/$TUMOUR \
+& wait
 cd /home/ubuntu/tools
 
 # Create Index Files from Input Data ====================================================
@@ -23,7 +23,9 @@ INDEXING BAMS
 
 "
 
-samtools index $DATA/$NORMAL & samtools index $DATA/$TUMOUR & wait
+samtools index $DATA/$NORMAL \
+& samtools index $DATA/$TUMOUR \
+& wait
 
 # RealignerTargetCreator ================================================================
 echo "
@@ -70,8 +72,8 @@ java -Xmx15g -jar GenomeAnalysisTK.jar \
 -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
 -maxReads 720000 -maxInMemory 5400000 \
--o $DATA/normal.indel.bam & \
-java -Xmx15g -jar GenomeAnalysisTK.jar \
+-o $DATA/normal.indel.bam \
+& java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
 -R $DATA/genome.fa \
 -I $DATA/$TUMOUR  \
@@ -80,12 +82,13 @@ java -Xmx15g -jar GenomeAnalysisTK.jar \
 -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
 -maxReads 720000 -maxInMemory 5400000 \
--o $DATA/tumour.indel.bam & \
-wait
+-o $DATA/tumour.indel.bam \
+& wait
 
 # File Cleanup to keep size down
 rm $DATA/$TUMOUR
 rm $DATA/$NORMAL
+rm $DATA/*.intervals
 
 
 # Base Recalibrator =====================================================================
@@ -140,7 +143,10 @@ java -jar GenomeAnalysisTK.jar \
 
 # File Cleanup to keep size down
 rm $DATA/normal.indel.bam
+rm $DATA/normal.indel.bai
 rm $DATA/tumour.indel.bam
+rm $DATA/tumour.indel.bai
+
 
 # Contest ArrayFree ====================================================================
 echo "
@@ -163,6 +169,12 @@ java -Djava.io.tmpdir=~/tmp -Xmx2g \
 echo STORING CONTAM VALUE
 CONTAM=$(cat $DATA/contest.firehose)
 
+# remove the large number of contest files
+cd $DATA
+mv contest.firehose backup.contam
+find . -type f -name .contest\* -exec rm {} \;
+find . -type f -name contest\* -exec rm {} \;
+cd /home/ubuntu/tools
 # MuTect ===============================================================================
 echo "
 
