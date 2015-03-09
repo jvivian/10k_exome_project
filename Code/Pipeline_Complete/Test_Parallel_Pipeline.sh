@@ -4,8 +4,8 @@ set -ex
 # 3-2-15
 
 DATA="/home/ubuntu/data"
-NORMAL="testexome.pair8.normal.bam"
-TUMOUR="testexome.pair8.tumour.bam"
+NORMAL="testexome.pair5.normal.bam"
+TUMOUR="testexome.pair5.tumour.bam"
 
 # Copy and paste help:   ${NORMAL}  ${TUMOUR}  ${DATA}   ${DATA}/${NORMAL}  ${DATA}/${TUMOUR}
 
