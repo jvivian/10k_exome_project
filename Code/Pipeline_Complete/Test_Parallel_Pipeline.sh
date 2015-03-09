@@ -187,7 +187,6 @@ MuTect
 "
 java -Xmx4g -jar muTect-1.1.5.jar \
 --analysis_type MuTect \
---ncpus 4 \
 --reference_sequence $DATA/genome.fa \
 --cosmic  $DATA/b37_cosmic_v54_120711.vcf \
 --dbsnp $DATA/dbsnp_132_b37.leftAligned.vcf \
