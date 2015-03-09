@@ -16,16 +16,17 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/$NORMAL \
 & wait
 cd /home/ubuntu/tools
 
+
 # Create Index Files from Input Data ====================================================
 echo "
 
 INDEXING BAMS
 
 "
-
 samtools index $DATA/$NORMAL \
 & samtools index $DATA/$TUMOUR \
 & wait
+
 
 # RealignerTargetCreator ================================================================
 echo "
@@ -33,7 +34,6 @@ echo "
 REALIGNER TARGET CREATOR
 
 "
-
 # NORMAL
 java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T RealignerTargetCreator \
@@ -55,6 +55,7 @@ java -Xmx15g -jar GenomeAnalysisTK.jar \
 -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
 --downsampling_type NONE \
 -o ${DATA}/output.tumour.intervals
+
 
 # IndelRealigner =======================================================================
 echo "
@@ -114,6 +115,7 @@ java -jar GenomeAnalysisTK.jar \
 -I $DATA/tumour.indel.bam \
 -knownSites $DATA/dbsnp_132_b37.leftAligned.vcf \
 -o $DATA/tumour.recal_data.table
+
 
 # PrintReads ==========================================================================
 echo "
@@ -175,6 +177,8 @@ mv contest.firehose backup.contam
 find . -type f -name .contest\* -exec rm {} \;
 find . -type f -name contest\* -exec rm {} \;
 cd /home/ubuntu/tools
+
+
 # MuTect ===============================================================================
 echo "
 
@@ -183,6 +187,7 @@ MuTect
 "
 java -Xmx4g -jar muTect-1.1.5.jar \
 --analysis_type MuTect \
+--ncpus 4 \
 --reference_sequence $DATA/genome.fa \
 --cosmic  $DATA/b37_cosmic_v54_120711.vcf \
 --dbsnp $DATA/dbsnp_132_b37.leftAligned.vcf \
