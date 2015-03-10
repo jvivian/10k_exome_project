@@ -4,8 +4,8 @@ set -ex
 # 3-2-15
 
 DATA="/home/ubuntu/data"
-NORMAL="testexome.pair5.normal.bam"
-TUMOUR="testexome.pair5.tumour.bam"
+NORMAL="testexome.pair4.normal.bam"
+TUMOUR="testexome.pair4.tumour.bam"
 
 # Copy and paste help:   ${NORMAL}  ${TUMOUR}  ${DATA}   ${DATA}/${NORMAL}  ${DATA}/${TUMOUR}
 
@@ -38,7 +38,7 @@ REALIGNER TARGET CREATOR
 java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T RealignerTargetCreator \
 -nt 4 \
--R ${DATA}/genome.fa \
+-R ${DATA}/Homo_sapiens_assembly19.fasta \
 -I ${DATA}/${NORMAL} \
 -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
@@ -49,7 +49,7 @@ java -Xmx15g -jar GenomeAnalysisTK.jar \
 java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T RealignerTargetCreator \
 -nt 4 \
--R ${DATA}/genome.fa \
+-R ${DATA}/Homo_sapiens_assembly19.fasta \
 -I ${DATA}/${TUMOUR} \
 -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
 -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
@@ -66,7 +66,7 @@ INDEL REALIGNER
 # NORMAL
 java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
--R $DATA/genome.fa \
+-R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/$NORMAL  \
 -targetIntervals $DATA/output.normal.intervals \
 --downsampling_type NONE \
@@ -76,7 +76,7 @@ java -Xmx15g -jar GenomeAnalysisTK.jar \
 -o $DATA/normal.indel.bam \
 & java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
--R $DATA/genome.fa \
+-R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/$TUMOUR  \
 -targetIntervals $DATA/output.tumour.intervals \
 --downsampling_type NONE \
@@ -102,7 +102,7 @@ Base Recalibrator
 java -jar GenomeAnalysisTK.jar \
 -T BaseRecalibrator \
 -nct 4 \
--R $DATA/genome.fa \
+-R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/normal.indel.bam \
 -knownSites $DATA/dbsnp_132_b37.leftAligned.vcf \
 -o $DATA/normal.recal_data.table
@@ -111,7 +111,7 @@ java -jar GenomeAnalysisTK.jar \
 java -jar GenomeAnalysisTK.jar \
 -T BaseRecalibrator \
 -nct 4 \
--R $DATA/genome.fa \
+-R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/tumour.indel.bam \
 -knownSites $DATA/dbsnp_132_b37.leftAligned.vcf \
 -o $DATA/tumour.recal_data.table
@@ -127,7 +127,7 @@ Print Reads
 java -jar GenomeAnalysisTK.jar \
 -T PrintReads \
 -nct 4  \
--R $DATA/genome.fa \
+-R $DATA/Homo_sapiens_assembly19.fasta \
 --emit_original_quals  \
 -I $DATA/normal.indel.bam \
 -BQSR $DATA/normal.recal_data.table \
@@ -137,7 +137,7 @@ java -jar GenomeAnalysisTK.jar \
 java -jar GenomeAnalysisTK.jar \
 -T PrintReads \
 -nct 4  \
--R $DATA/genome.fa \
+-R $DATA/Homo_sapiens_assembly19.fasta \
 --emit_original_quals  \
 -I $DATA/tumour.indel.bam \
 -BQSR $DATA/tumour.recal_data.table \
@@ -159,7 +159,7 @@ Contest_ArrayFree
 java -Djava.io.tmpdir=~/tmp -Xmx2g \
 -jar Queue-1.4-437-g6b8a9e1-svn-35362.jar \
 -S ContaminationPipeline.scala \
---reference $DATA/genome.fa \
+--reference $DATA/Homo_sapiens_assembly19.fasta \
 --output $DATA/contest \
 --bamfile $DATA/tumour.bqsr.bam \
 -nbam $DATA/normal.bqsr.bam \
@@ -187,13 +187,13 @@ MuTect
 "
 java -Xmx4g -jar muTect-1.1.5.jar \
 --analysis_type MuTect \
---reference_sequence $DATA/genome.fa \
+--reference_sequence $DATA/Homo_sapiens_assembly19.fasta \
 --cosmic  $DATA/b37_cosmic_v54_120711.vcf \
 --dbsnp $DATA/dbsnp_132_b37.leftAligned.vcf \
 --intervals $DATA/SNP6.hg19.interval_list \
 --input_file:normal $DATA/normal.bqsr.bam \
 --input_file:tumor $DATA/tumour.bqsr.bam \
---fraction_contamination $CONTAM \
+--fraction_contamination 0.0 \
 --out $DATA/MuTect.out \
 --coverage_file $DATA/MuTect.coverage \
 --vcf $DATA/MuTect.pair8.vcf
