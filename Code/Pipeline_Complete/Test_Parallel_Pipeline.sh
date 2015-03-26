@@ -4,8 +4,8 @@ set -ex
 # 3-2-15
 
 DATA="/home/ubuntu/data"
-NORMAL="testexome.pair4.normal.bam"
-TUMOUR="testexome.pair4.tumour.bam"
+NORMAL="testexome.pair8.normal.bam"
+TUMOUR="testexome.pair8.tumour.bam"
 
 # Copy and paste help:   ${NORMAL}  ${TUMOUR}  ${DATA}   ${DATA}/${NORMAL}  ${DATA}/${TUMOUR}
 
@@ -185,12 +185,11 @@ echo "
 MuTect
 
 "
-java -Xmx4g -jar muTect-1.1.5.jar \
+java -Xmx15g -jar mutect-1.1.7.jar \
 --analysis_type MuTect \
 --reference_sequence $DATA/Homo_sapiens_assembly19.fasta \
 --cosmic  $DATA/b37_cosmic_v54_120711.vcf \
 --dbsnp $DATA/dbsnp_132_b37.leftAligned.vcf \
---intervals $DATA/SNP6.hg19.interval_list \
 --input_file:normal $DATA/normal.bqsr.bam \
 --input_file:tumor $DATA/tumour.bqsr.bam \
 --out $DATA/MuTect.out \
