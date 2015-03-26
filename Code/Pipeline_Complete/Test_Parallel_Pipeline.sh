@@ -69,7 +69,7 @@ INDEL REALIGNER
 "
 # NORMAL
 echo IR-parallel >> /home/ubuntu/time.txt
-{time java -Xmx15g -jar GenomeAnalysisTK.jar \
+{ time java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T IndelRealigner \
 -R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/$NORMAL  \
