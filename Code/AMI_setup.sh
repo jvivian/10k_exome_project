@@ -34,14 +34,14 @@ sleep 3
 
 # GenomeAnalysisTK.jar
 cd /home/ubuntu/tools
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/GenomeAnalysisTK.jar
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/GenomeAnalysisTK.jar
 # Picard Tools - CreateDictionarySequence
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/CreateSequenceDictionary.jar
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/CreateSequenceDictionary.jar
 # Contest ArrayFree
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/Queue-1.4-437-g6b8a9e1-svn-35362.jar
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/ContaminationPipeline.scala
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Queue-1.4-437-g6b8a9e1-svn-35362.jar
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/ContaminationPipeline.scala
 # MuTect
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/muTect-1.1.5.jar
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/muTect-1.1.5.jar
 
 
 ############
@@ -54,25 +54,25 @@ sleep 3
 
 cd /home/ubuntu/data
 # Phase1 VCF
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/1000G_phase1.indels.hg19.sites.fixed.vcf
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/1000G_phase1.indels.hg19.sites.fixed.vcf
 # Gold VCF
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
 # SNP Interval_List
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/SNP6.hg19.interval_list
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/SNP6.hg19.interval_list
 # Cosmic VCF
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/b37_cosmic_v54_120711.vcf
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/b37_cosmic_v54_120711.vcf
 # DBSNP VCF
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/dbsnp_132_b37.leftAligned.vcf
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/dbsnp_132_b37.leftAligned.vcf
 # PopHap VCF
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/hg19_population_stratified_af_hapmap_3.3.fixed.vcf
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/hg19_population_stratified_af_hapmap_3.3.fixed.vcf
 # BED file
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/gaf_20111020%2Bbroad_wex_1.1_hg19.bed
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/gaf_20111020%2Bbroad_wex_1.1_hg19.bed
 # Genome.dict
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/genome.dict
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.dict
 # Genome.fa.fai
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/genome.fa.fai
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta.fai
 # Genome.fa
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/genome.fa
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta
 
 
 echo All Tools and Data have been acquired
