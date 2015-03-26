@@ -40,7 +40,7 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/CreateSequence
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Queue-1.4-437-g6b8a9e1-svn-35362.jar
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/ContaminationPipeline.scala
 # MuTect
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/muTect-1.1.5.jar
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/mutect-1.1.7.jar
 
 
 ############
@@ -72,6 +72,9 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_a
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta.fai
 # Genome.fa
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta
+# DBSNP HG19
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/dbsnp_138.hg19.fixed.vcf
+
 
 
 echo All Tools and Data have been acquired
