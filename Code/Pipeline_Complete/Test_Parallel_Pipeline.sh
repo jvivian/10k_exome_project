@@ -99,7 +99,7 @@ Base Recalibrator
 
 "
 # NORMAL
-java -jar GenomeAnalysisTK.jar \
+java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T BaseRecalibrator \
 -nct 4 \
 -R $DATA/Homo_sapiens_assembly19.fasta \
@@ -108,7 +108,7 @@ java -jar GenomeAnalysisTK.jar \
 -o $DATA/normal.recal_data.table
 
 # TUMOUR
-java -jar GenomeAnalysisTK.jar \
+java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T BaseRecalibrator \
 -nct 4 \
 -R $DATA/Homo_sapiens_assembly19.fasta \
@@ -124,7 +124,7 @@ Print Reads
 
 "
 # NORMAL
-java -jar GenomeAnalysisTK.jar \
+java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T PrintReads \
 -nct 4  \
 -R $DATA/Homo_sapiens_assembly19.fasta \
@@ -134,7 +134,7 @@ java -jar GenomeAnalysisTK.jar \
 -o $DATA/normal.bqsr.bam
 
 # TUMOUR
-java -jar GenomeAnalysisTK.jar \
+java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T PrintReads \
 -nct 4  \
 -R $DATA/Homo_sapiens_assembly19.fasta \
@@ -193,7 +193,6 @@ java -Xmx4g -jar muTect-1.1.5.jar \
 --intervals $DATA/SNP6.hg19.interval_list \
 --input_file:normal $DATA/normal.bqsr.bam \
 --input_file:tumor $DATA/tumour.bqsr.bam \
---fraction_contamination 0.0 \
 --out $DATA/MuTect.out \
 --coverage_file $DATA/MuTect.coverage \
 --vcf $DATA/MuTect.pair8.vcf
