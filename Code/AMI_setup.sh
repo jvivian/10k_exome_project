@@ -25,7 +25,6 @@ sudo pip install PyVCF
 # Make data and tool dirs
 mkdir /home/ubuntu/data
 mkdir /home/ubuntu/tools
-mkdir /home/ubuntu/intermediates
 
 echo
 echo Obtaining .jars and tools from S3
