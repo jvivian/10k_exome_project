@@ -74,7 +74,8 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_a
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta
 # DBSNP HG19
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/dbsnp_138.hg19.fixed.vcf
-
+# Bed File
+wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/whole_exome_agilent_1.1_refseq_plus_3_boosters.targetIntervals.bed
 
 
 echo All Tools and Data have been acquired
