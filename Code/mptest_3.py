@@ -12,14 +12,18 @@ import os
 import sys
 
 def handler():
-    while True:
+    item = q.get()
+    while item != 'S':
+        sys.stdout.write("\nSleeping: {}\n".format( item ))
+        call(["time", "sleep", str(item)], stdout=PIPE, stderr=PIPE)
         item = q.get()
-        if item != 'S':
-            sys.stdout.write("\nSleeping: {}".format( item ))
-            call(["time", "sleep", str(item)], stdout=PIPE, stderr=PIPE)
-        else:
-            print "Sentinel Found"
-            os._exit(1) # This is required over sys.exit(1) as sys.exit only exits the thread.
+
+    print "\nSentinel Found, Thread Ending"
+
+def get_val():
+    while True:
+        val = raw_input("\nEnter a number (or 'S' to signal exit): ")
+        q.put(val)
 
 if __name__ == '__main__':
 
@@ -35,15 +39,21 @@ if __name__ == '__main__':
     q.put(2)
     q.put(2)
 
+    threads = []
     # Create child threads for jobs
     for i in xrange(N):
         t = Thread(target=handler)
         t.start()
+        threads.append(t)
 
-    # Create "implicit" thread for user input.
-    while True:
-        val = raw_input("\nEnter a number (or 'S' to signal exit): ")
-        q.put(val)
+    nt = Thread(target=get_val)
+    nt.daemon = True
+    nt.start()
+
+    # Wait for job threads to die
+    for thread in threads:
+        thread.join()
+    print "\nThreads joined, program terminating."
 
 
 
