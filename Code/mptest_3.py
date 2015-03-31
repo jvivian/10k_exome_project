@@ -13,7 +13,7 @@ import sys
 
 def handler():
     item = q.get()
-    while item != 'S':
+    while item != 'S' and isinstance(item, int):
         sys.stdout.write("\nSleeping: {}\n".format( item ))
         call(["time", "sleep", str(item)], stdout=PIPE, stderr=PIPE)
         item = q.get()
@@ -23,7 +23,10 @@ def handler():
 def get_val():
     while True:
         val = raw_input("\nEnter a number (or 'S' to signal exit): ")
-        q.put(val)
+        try:
+            q.put(int(val))
+        except:
+            q.put(val)
 
 if __name__ == '__main__':
 
@@ -32,12 +35,6 @@ if __name__ == '__main__':
 
     # create Queue object
     q = Queue()
-
-    # pre-populate queue
-    q.put(1)
-    q.put(5)
-    q.put(2)
-    q.put(2)
 
     threads = []
     # Create child threads for jobs
