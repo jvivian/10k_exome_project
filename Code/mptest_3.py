@@ -6,16 +6,17 @@ Think about how to terminate all threads cleanly.
 """
 
 from Queue import Queue
-from subprocess import call
+from subprocess import call, PIPE
 from threading import Thread
 import os
+import sys
 
 def handler():
     while True:
         item = q.get()
         if item != 'S':
-            print "Sleeping: {}".format( item )
-            call(["time", "sleep", str(item)])
+            sys.stdout.write("\nSleeping: {}".format( item ))
+            call(["time", "sleep", str(item)], stdout=PIPE, stderr=PIPE)
         else:
             print "Sentinel Found"
             os._exit(1) # This is required over sys.exit(1) as sys.exit only exits the thread.
@@ -41,7 +42,7 @@ if __name__ == '__main__':
 
     # Create "implicit" thread for user input.
     while True:
-        val = raw_input("Enter a number (or 'S' to signal exit): ")
+        val = raw_input("\nEnter a number (or 'S' to signal exit): ")
         q.put(val)
 
 
