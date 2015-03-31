@@ -22,6 +22,9 @@ def handler():
 
 if __name__ == '__main__':
 
+    # Number of threads
+    N = 2
+
     # create Queue object
     q = Queue()
 
@@ -31,9 +34,10 @@ if __name__ == '__main__':
     q.put(2)
     q.put(2)
 
-    # Create child thread for worker
-    t = Thread(target=handler)
-    t.start()
+    # Create child threads for jobs
+    for i in xrange(N):
+        t = Thread(target=handler)
+        t.start()
 
     # Create "implicit" thread for user input.
     while True:
