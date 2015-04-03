@@ -18,7 +18,7 @@ echo
 sleep 3
 
 sudo apt-get update -y
-sudo apt-get install -y samtools git wget openjdk-7-jre git python-pip
+sudo apt-get install -y samtools git wget openjdk-7-jre git python-pip coop-computing-tools
 sudo pip install PyVCF
 
 
