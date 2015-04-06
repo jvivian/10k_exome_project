@@ -24,10 +24,10 @@ CORES=4
 MEMORY=15000
 
 $NDATA/RTC.N.intervals: GenomeAnalysisTK.jar $NDATA/N9.bam.bai $NDATA/N9.bam $DATA/Homo_sapiens_assembly19.fasta $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
-    java -Xmx15g -jar GenomeAnalysisTK.jar -T RealignerTargetCreator -nt 4 -R $DATA/Homo_sapiens_assembly19.fasta -I $NDATA/N9.bam -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf --downsampling_type NONE -o $NDATA/RTC.N.intervals
+    java -Xmx${MEMORY}m -jar GenomeAnalysisTK.jar -T RealignerTargetCreator -nt $CORES -R $DATA/Homo_sapiens_assembly19.fasta -I $NDATA/N9.bam -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf --downsampling_type NONE -o $NDATA/RTC.N.intervals
 
 $NDATA/RTC.T.intervals: GenomeAnalysisTK.jar $NDATA/T9.bam.bai $NDATA/T9.bam $DATA/Homo_sapiens_assembly19.fasta $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
-    java -Xmx15g -jar GenomeAnalysisTK.jar -T RealignerTargetCreator -nt 4 -R $DATA/Homo_sapiens_assembly19.fasta -I $NDATA/T9.bam -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf --downsampling_type NONE -o $NDATA/RTC.N.intervals
+    java -Xmx${MEMORY}m -jar GenomeAnalysisTK.jar -T RealignerTargetCreator -nt $CORES -R $DATA/Homo_sapiens_assembly19.fasta -I $NDATA/T9.bam -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf --downsampling_type NONE -o $NDATA/RTC.N.intervals
 
 ###################
 #   IR Category   #
@@ -37,4 +37,9 @@ CATEGORY='IR'
 CORES=1
 MEMORY=7500
 
-$NDATA/N9.indel.bam: GenomeAnalysisTK.jar $NDATA/RTC.N.intervals $
+$NDATA/N9.indel.bam: GenomeAnalysisTK.jar $NDATA/RTC.N.intervals $DATA/Homo_sapiens_assembly19.fastas $DATA/N9.bam $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
+    java -Xmx${MEMORY}m -jar GenomeAnalysisTK.jar -T IndelRealigner -R $DATA/Homo_sapiens_assembly19.fasta -I $DATA/N9.bam -targetIntervals $DATA/RTC.N.intervals --downsampling_type NONE -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf -maxReads 720000 -maxInMemory 5400000 -o $DATA/N9.indel.bam
+    
+$NDATA/T9.indel.bam: GenomeAnalysisTK.jar $NDATA/RTC.N.intervals $DATA/Homo_sapiens_assembly19.fastas $DATA/N9.bam $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf
+    java -Xmx${MEMORY}m -jar GenomeAnalysisTK.jar -T IndelRealigner -R $DATA/Homo_sapiens_assembly19.fasta -I $DATA/T9.bam -targetIntervals $DATA/RTC.N.intervals --downsampling_type NONE -known $DATA/1000G_phase1.indels.hg19.sites.fixed.vcf -known $DATA/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf -maxReads 720000 -maxInMemory 5400000 -o $DATA/T9.indel.bam
+
