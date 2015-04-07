@@ -29,7 +29,7 @@ mkdir /home/ubuntu/tools
 echo
 echo Obtaining .jars and tools from S3
 echo
-sleep 3
+sleep 1
 
 # GenomeAnalysisTK.jar
 cd /home/ubuntu/tools
@@ -37,8 +37,8 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/GenomeAnalysis
 # Picard Tools - CreateDictionarySequence
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/CreateSequenceDictionary.jar
 # Contest ArrayFree
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Queue-1.4-437-g6b8a9e1-svn-35362.jar
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/ContaminationPipeline.scala
+#wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Queue-1.4-437-g6b8a9e1-svn-35362.jar
+#wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/ContaminationPipeline.scala
 # MuTect
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/mutect-1.1.7.jar
 
@@ -73,7 +73,7 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_a
 # Genome.fa
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta
 # DBSNP HG19
-wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/dbsnp_138.hg19.fixed.vcf
+#wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/dbsnp_138.hg19.fixed.vcf
 # Bed File
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/whole_exome_agilent_1.1_refseq_plus_3_boosters.targetIntervals.bed
 
