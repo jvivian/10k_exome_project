@@ -64,7 +64,7 @@ $NDATA/T9.recal.table: GenomeAnalysisTK.jar $NDATA/T9.indel.bam $DATA/dbsnp_132_
 
 CATEGORY="PR"
 CORES=4
-MEMORY=15000
+MEMORY=7500
 
 $NDATA/N9.bqsr.bam: GenomeAnalysisTK.jar $DATA/Homo_sapiens_assembly19.fasta $NDATA/N9.indel.bam $NDATA/N9.recal.table
     time java -Xmx${MEMORY}m -jar GenomeAnalysisTK.jar -T PrintReads -nct $CORES -R $DATA/Homo_sapiens_assembly19.fasta --emit_original_quals  -I $NDATA/N9.indel.bam -BQSR $NDATA/N9.recal.table -o $NDATA/N9.bqsr.bam
