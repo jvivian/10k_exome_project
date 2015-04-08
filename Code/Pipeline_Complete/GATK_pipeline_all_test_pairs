@@ -23,7 +23,7 @@ do
     #####################
     cd ${DATA}
     wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/${NORMAL} \
-    & wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/${NORMAL} \
+    & wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/${TUMOR} \
     & wait
     cd ${TOOLS}
 
