@@ -1,0 +1,157 @@
+#!/bin/bash
+# John Vivian
+# 4-8-15
+
+# Establish global ENVs
+DATA="/home/ubuntu/data"
+TOOLS="/home/ubuntu/tools"
+OUT="/home/ubuntu/VCFs"
+CORES=4
+MEM=15000
+HMEM=$((MEM / 2))
+
+
+for PAIR in 0 2 3 4 5 6 7 8 9
+do
+
+    # Define BAMs
+    NORMAL="testexome.pair${PAIR}.normal.bam"
+    TUMOR="testexome.pair${PAIR}.tumor.bam"
+
+    #####################
+    #   Download BAMs   #
+    #####################
+    cd ${DATA}
+    wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/${NORMAL} \
+    & wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/${NORMAL} \
+    & wait
+    cd ${TOOLS}
+
+    ##################
+    #   Index BAMs   #
+    ##################
+    samtools index ${DATA}/${NORMAL} \
+    & samtools index ${DATA}/${TUMOR} \
+    & wait
+
+    ###########
+    #   RTC   #
+    ###########
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T RealignerTargetCreator \
+    -nt ${CORES} \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    -I ${DATA}/${NORMAL} \
+    -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
+    -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+    --downsampling_type NONE \
+    -o ${DATA}/output.normal.intervals \
+    & \
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T RealignerTargetCreator \
+    -nt ${CORES} \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    -I ${DATA}/${TUMOR} \
+    -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
+    -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+    --downsampling_type NONE \
+    -o ${DATA}/output.tumor.intervals \
+    & wait
+
+    ##########
+    #   IR   #
+    ##########
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T IndelRealigner \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    -I ${DATA}/${NORMAL}  \
+    -targetIntervals ${DATA}/output.normal.intervals \
+    --downsampling_type NONE \
+    -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
+    -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+    -maxReads 720000 -maxInMemory 5400000 \
+    -o ${DATA}/normal.indel.bam \
+    & \
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T IndelRealigner \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    -I ${DATA}/${TUMOR}  \
+    -targetIntervals ${DATA}/output.tumor.intervals \
+    --downsampling_type NONE \
+    -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
+    -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+    -maxReads 720000 -maxInMemory 5400000 \
+    -o ${DATA}/tumor.indel.bam \
+    & wait
+
+    # File Cleanup to keep size down
+    rm ${DATA}/${TUMOR}
+    rm ${DATA}/${NORMAL}
+    rm ${DATA}/*.intervals
+
+    ##########
+    #   BR   #
+    ##########
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T BaseRecalibrator \
+    -nct ${CORES} \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    -I ${DATA}/normal.indel.bam \
+    -knownSites ${DATA}/dbsnp_132_b37.leftAligned.vcf \
+    -o ${DATA}/normal.recal_data.table \
+    & \
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T BaseRecalibrator \
+    -nct ${CORES} \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    -I ${DATA}/tumor.indel.bam \
+    -knownSites ${DATA}/dbsnp_132_b37.leftAligned.vcf \
+    -o ${DATA}/tumor.recal_data.table \
+    & wait
+    
+    ##########
+    #   PR   #
+    ##########
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T PrintReads \
+    -nct ${CORES} \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    --emit_original_quals  \
+    -I ${DATA}/normal.indel.bam \
+    -BQSR ${DATA}/normal.recal_data.table \
+    -o ${DATA}/normal.bqsr.bam \
+    & \
+    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    -T PrintReads \
+    -nct ${CORES}  \
+    -R ${DATA}/Homo_sapiens_assembly19.fasta \
+    --emit_original_quals  \
+    -I ${DATA}/tumor.indel.bam \
+    -BQSR ${DATA}/tumor.recal_data.table \
+    -o ${DATA}/tumor.bqsr.bam
+    
+    # File Cleanup to keep size down
+    rm ${DATA}/normal.indel.bam
+    rm ${DATA}/normal.indel.bai
+    rm ${DATA}/tumor.indel.bam
+    rm ${DATA}/tumor.indel.bai
+    rm ${DATA}/tumor.recal_data.table
+    rm ${DATA}/normal.recal_data.table
+    
+    ##############
+    #   MuTect   #
+    ##############
+    java -Xmx${MEM} -jar mutect-1.1.7.jar \
+    --analysis_type MuTect \
+    --reference_sequence ${DATA}/Homo_sapiens_assembly19.fasta \
+    --cosmic  ${DATA}/b37_cosmic_v54_120711.vcf \
+    --tumor_lod 10 \
+    --dbsnp ${DATA}/dbsnp_132_b37.leftAligned.vcf \
+    --input_file:normal ${DATA}/normal.bqsr.bam \
+    --input_file:tumor ${DATA}/tumor.bqsr.bam \
+    --out ${DATA}/MuTect.out \
+    --coverage_file ${DATA}/MuTect.coverage \
+    --vcf ${OUT}/Pair${PAIR}.lod10.dbsnp.cosmic.vcf
+
+done
+
