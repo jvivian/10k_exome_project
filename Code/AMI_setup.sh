@@ -15,7 +15,7 @@ set -ex
 echo
 echo Downloading Tools via Apt-get
 echo
-sleep 3
+sleep 1
 
 sudo apt-get update -y
 sudo apt-get install -y samtools git wget openjdk-7-jre git python-pip coop-computing-tools
@@ -37,8 +37,8 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/GenomeAnalysis
 # Picard Tools - CreateDictionarySequence
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/CreateSequenceDictionary.jar
 # Contest ArrayFree
-#wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Queue-1.4-437-g6b8a9e1-svn-35362.jar
-#wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/ContaminationPipeline.scala
+# wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Queue-1.4-437-g6b8a9e1-svn-35362.jar
+# wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/ContaminationPipeline.scala
 # MuTect
 wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/mutect-1.1.7.jar
 
@@ -49,7 +49,7 @@ wget https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/mutect-1.1.7.j
 echo
 echo Downloading Precursor Data
 echo
-sleep 3
+sleep 1
 
 cd /home/ubuntu/data
 # Phase1 VCF
