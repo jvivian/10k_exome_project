@@ -112,7 +112,7 @@ do
     ##########
     #   PR   #
     ##########
-    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    java -Xmx6500m -jar GenomeAnalysisTK.jar \
     -T PrintReads \
     -nct ${CORES} \
     -R ${DATA}/Homo_sapiens_assembly19.fasta \
@@ -121,7 +121,7 @@ do
     -BQSR ${DATA}/normal.recal_data.table \
     -o ${DATA}/normal.bqsr.bam \
     & \
-    java -Xmx${HMEM}m -jar GenomeAnalysisTK.jar \
+    java -Xmx6500m -jar GenomeAnalysisTK.jar \
     -T PrintReads \
     -nct ${CORES}  \
     -R ${DATA}/Homo_sapiens_assembly19.fasta \
@@ -152,6 +152,11 @@ do
     --out ${DATA}/MuTect.out \
     --coverage_file ${DATA}/MuTect.coverage \
     --vcf ${OUT}/Pair${PAIR}.lod10.dbsnp.cosmic.vcf
+
+    rm ${DATA}/tumor.bqsr.bam
+    rm ${DATA}/tumor.bqsr.bai
+    rm ${DATA}/normal.bqsr.bam
+    rm ${DATA}/normal.bqsr.bai
 
 done
 
