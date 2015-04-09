@@ -2,6 +2,7 @@
 # John Vivian
 # 4-8-15
 
+set -ex
 # Establish global ENVs
 DATA="/home/ubuntu/data"
 TOOLS="/home/ubuntu/tools"
