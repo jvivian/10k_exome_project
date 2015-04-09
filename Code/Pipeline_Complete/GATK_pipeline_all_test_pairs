@@ -128,7 +128,8 @@ do
     --emit_original_quals  \
     -I ${DATA}/tumor.indel.bam \
     -BQSR ${DATA}/tumor.recal_data.table \
-    -o ${DATA}/tumor.bqsr.bam
+    -o ${DATA}/tumor.bqsr.bam \
+    & wait
     
     # File Cleanup to keep size down
     rm ${DATA}/normal.indel.bam
