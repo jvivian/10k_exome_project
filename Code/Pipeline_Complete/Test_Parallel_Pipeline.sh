@@ -6,7 +6,7 @@ set -ex
 DATA="/home/ubuntu/data"
 NORMAL="testexome.pair8.normal.bam"
 TUMOUR="testexome.pair8.tumour.bam"
-CORES=4
+CORES=8
 N="N8"
 T="T8"
 
@@ -14,7 +14,6 @@ T="T8"
 
 # Obtain BAMS
 cd /home/ubuntu/data
-echo Obtaining Tumour/Normal BAMs >> /home/ubuntu/time.txt
 time wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/$NORMAL \
 & wget https://s3-us-west-2.amazonaws.com/bd2k-test-data/$TUMOUR \
 & wait
@@ -27,7 +26,6 @@ echo "
 INDEXING BAMS
 
 "
-echo Indexing BAMs >> /home/ubuntu/time.txt
 time samtools index $DATA/$NORMAL \
 & samtools index $DATA/$TUMOUR \
 & wait
@@ -55,7 +53,7 @@ time java -Xmx15g -jar GenomeAnalysisTK.jar \
 echo RTC-Tumour >> /home/ubuntu/time.txt
 time java -Xmx15g -jar GenomeAnalysisTK.jar \
 -T RealignerTargetCreator \
--nt 4 \
+-nt $CORES \
 -R ${DATA}/Homo_sapiens_assembly19.fasta \
 -I ${DATA}/${TUMOUR} \
 -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
@@ -107,9 +105,9 @@ Base Recalibrator
 "
 echo BR-Normal >> /home/ubuntu/time.txt
 # NORMAL
-time java -Xmx15g -jar GenomeAnalysisTK.jar \
+time java -Xmx7g -jar GenomeAnalysisTK.jar \
 -T BaseRecalibrator \
--nct 4 \
+-nct $CORES \
 -R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/normal.indel.bam \
 -knownSites $DATA/dbsnp_132_b37.leftAligned.vcf \
@@ -119,7 +117,7 @@ echo BR-Tumour >> /home/ubuntu/time.txt
 # TUMOUR
 time java -Xmx7g -jar GenomeAnalysisTK.jar \
 -T BaseRecalibrator \
--nct 4 \
+-nct $CORES \
 -R $DATA/Homo_sapiens_assembly19.fasta \
 -I $DATA/tumour.indel.bam \
 -knownSites $DATA/dbsnp_132_b37.leftAligned.vcf \
@@ -136,7 +134,7 @@ echo PR-Normal >> /home/ubuntu/time.txt
 # NORMAL
 time java -Xmx7g -jar GenomeAnalysisTK.jar \
 -T PrintReads \
--nct 4  \
+-nct $CORES \
 -R $DATA/Homo_sapiens_assembly19.fasta \
 --emit_original_quals  \
 -I $DATA/normal.indel.bam \
@@ -147,7 +145,7 @@ echo PR-Tumour >> /home/ubuntu/time.txt
 # TUMOUR
 time java -Xmx7g -jar GenomeAnalysisTK.jar \
 -T PrintReads \
--nct 4  \
+-nct $CORES  \
 -R $DATA/Homo_sapiens_assembly19.fasta \
 --emit_original_quals  \
 -I $DATA/tumour.indel.bam \
@@ -202,12 +200,14 @@ time java -Xmx15g -jar mutect-1.1.7.jar \
 --analysis_type MuTect \
 --reference_sequence $DATA/Homo_sapiens_assembly19.fasta \
 --cosmic  $DATA/b37_cosmic_v54_120711.vcf \
---intervals $DATA/whole_exome_agilent_1.1_refseq_plus_3_boosters.targetIntervals.bed \
+--tumor_lod 10 \
 --dbsnp $DATA/dbsnp_132_b37.leftAligned.vcf \
 --input_file:normal $DATA/normal.bqsr.bam \
 --input_file:tumor $DATA/tumour.bqsr.bam \
 --out $DATA/MuTect.out \
 --coverage_file $DATA/MuTect.coverage \
---vcf $DATA/cover.test.vcf
+--vcf $DATA/Pair8.lod10.dbsnp.cosmic.vcf
+
+#--intervals $DATA/whole_exome_agilent_1.1_refseq_plus_3_boosters.targetIntervals.bed \
 
 

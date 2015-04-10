@@ -8,7 +8,7 @@ DATA="/home/ubuntu/data"
 TOOLS="/home/ubuntu/tools"
 OUT="/home/ubuntu/VCFs"
 CORES=4
-MEM=15000
+MEM=14000
 HMEM=$((MEM / 2))
 
 
