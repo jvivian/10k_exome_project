@@ -30,6 +30,8 @@ from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
 from subprocess import Popen
 import argparse
+import os
+
 
 def build_parser():
     """ Parser for file input"""
@@ -43,10 +45,9 @@ def build_parser():
     parser.add_argument('-o', '--out_dir', default='/home/ubuntu/VCFs', help='Output Directory')
     parser.add_argument('-d', '--dbsnp', help='dbsnp_132_b37.leftAligned.vcf')
     parser.add_argument('-c', '--cosmic', help='b37_cosmic_v54_120711.vcf')
-
-
-    #parser.add_argument('-d', '--data_dir', default='/home/ubuntu/data', help='Path to Data_Directory')
-    #parser.add_argument('-t', '--tool_dir', default='home/ubuntu/tools', help='Path')
+    parser.add_argument('-t', '--tool_dir', default='home/ubuntu/tools', help='Path')
+    # parser.add_argument('-d', '--data_dir', default='/home/ubuntu/data', help='Path to Data_Directory')
+    return parser
 
 
 class StartNode(Target):
@@ -60,30 +61,99 @@ class StartNode(Target):
     def run(self):
         self.addChildTarget(NormalIndex(self))
         self.addChildTarget(TumorIndex(self))
-        self.setFollowOnTarget()
+        self.setFollowOnTarget(Mutect(self))
+
 
 class NormalIndex(Target):
     def __init__(self, inputs):
         # initialize Target
         Target.__init__(self)
-        # initialize inputs
-        self.inputs = inputs
+        self.normal = inputs['normal']
 
     def run(self):
+        Popen(["samtools", "index", self.normal])
+        self.addChildTarget(NormalRTC(self))
 
-        # unpack inputs
-
-        Popen(["samtools", "index", self.n_bam])
-        self.addChildtarget(NormalRTC(self) )
 
 class NormalRTC(Target):
     def __init__(self, inputs):
-
         # Initialize Target
         Target.__init__(self)
 
     def run(self):
+        pass
 
+class NormalIR(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class NormalBR(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class NormalPR(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class TumorIndex(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class TumorRTC(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class TumorIR(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class TumorBR(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class TumorPR(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
+
+class Mutect(Target):
+    def __init__(self, inputs):
+        # Initialize Target
+        Target.__init__(self)
+
+    def run(self):
+        pass
 
 
 if __name__ == "__main__":
@@ -96,8 +166,24 @@ if __name__ == "__main__":
     inputs = {'ref' : args.reference_genome,
               'normal': args.normal,
               'tumor': args.tumor,
+              'phase': args.phase,
+              'mills': args.mills,
+              'dbsnp': args.dbsnp,
+              'cosmic': args.cosmic,
+              'tool_dir' : args.tool_dir,
+              'out_dir' : args.out_dir,
               }
 
     # Create output directory if it does not exist
     if not os.path.exists(args.out_dir):
         os.mkdir(args.out_dir)
+
+    # Sanity checks for files/dirs
+    for input in inputs:
+        if not os.path.exists(inputs[input]):
+            raise RuntimeError("File or Directory is missing: {}".format(inputs[input]))
+
+    i = Stack(Target.makeTargetFn(StartNode(inputs))).startJobTree(args)
+
+    if i != 0:
+        raise RuntimeError("Got failed jobs")
