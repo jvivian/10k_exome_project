@@ -15,6 +15,7 @@ Tree Structure of GATK Pipeline is shown below
    |   |
    9   10
 
+0  = create .dict/.fai for reference genome
 1,2 = samtools index
 3,4 = RealignerTargetCreator
 5,6 = Indel Realignment
@@ -22,8 +23,8 @@ Tree Structure of GATK Pipeline is shown below
 9,10 = Recalibrate (PrintReads)
 11 = MuTect
 
-|,/,| = children
-----> = follow-on
+1-10 are "Target children"
+11 is a "Target follow-fn"
 
 ==================================================================
 
@@ -48,36 +49,92 @@ TARGET
 
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
-from subprocess import Popen
 import argparse
 import os
+import boto
 
 
 def build_parser():
     """ Parser for file input"""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--reference_genome', help="Reference Genome")
-    parser.add_argument('-n', '--normal', help='Normal BAM')
-    parser.add_argument('-t', '--tumor', help='Tumor BAM')
-    parser.add_argument('-p', '--phase', help='1000G_phase1.indels.hg19.sites.fixed.vcf')
-    parser.add_argument('-m', '--mills', help='Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf')
-    parser.add_argument('-d', '--dbsnp', help='dbsnp_132_b37.leftAligned.vcf')
-    parser.add_argument('-c', '--cosmic', help='b37_cosmic_v54_120711.vcf')
+    parser.add_argument('-r', '--reference_genome', required=True, help="Reference Genome URL")
+    parser.add_argument('-n', '--normal', required=True, help='Normal BAM URL')
+    parser.add_argument('-t', '--tumor', required=True, help='Tumor BAM URL')
+    parser.add_argument('-p', '--phase', required=True, help='1000G_phase1.indels.hg19.sites.fixed.vcf URL')
+    parser.add_argument('-m', '--mills', required=True, help='Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf URL')
+    parser.add_argument('-d', '--dbsnp', required=True, help='dbsnp_132_b37.leftAligned.vcf URL')
+    parser.add_argument('-c', '--cosmic', required=True, help='b37_cosmic_v54_120711.vcf URL')
     return parser
 
 
+def download(local_dir, *arg):
+    """Checks for inputs in local_dir, downloads from S3 if not present"""
+
+    script_name = os.path.basename(__file__)
+
+    if not os.path.exists(local_dir):
+        os.mkdir(local_dir)
+    if not os.path.exists(os.path.join(local_dir, script_name)):
+        os.mkdir(os.path.join(local_dir, script_name))
+
+    for input in arg:
+        if not os.path.exists(os.path.join(local_dir, script_name, input)):
+            # Download files from S3
+            pass
+
+def upload():
+    pass
+
 def start_node(target, inputs):
-    """Used to start children and follow-on"""
+    """Create .dict/.fai for reference and start children/follow-on"""
+
+
+
     target.addChildTargetFn()
     target.addChildTargetFn()
     target.addFollowOnTargetFn()
 
-def normal_RTC(target, inputs):
+def normal_index(target, inputs):
+    """Creates index file for BAM"""
+    pass
 
+def tumor_index(target, inputs):
+    pass
+
+def normal_RTC(target, inputs):
+    pass
+
+def tumor_RTC(target, inputs):
+    pass
+
+def normal_IR(target, inputs):
+    pass
+
+def tumor_IR(target, inputs):
+    pass
+
+def normal_BR(target, inputs):
+    pass
+
+def tumor_BR(target, inputs):
+    pass
+
+def normal_PR(target, inputs):
+    pass
+
+def tumor_PR(target, inputs):
+    pass
+
+def mutect(target, inputs):
+    pass
 
 
 def main():
 
+    # Define global variable: local_dir
+    local_dir = "/mnt/jobtree"
+
+    # Handle parser logic
     parser = build_parser()
     Stack.addJobTreeOptions(parser)
     args = parser.parse_args()
@@ -92,11 +149,17 @@ def main():
               'cosmic': args.cosmic,
               }
 
-    i = Stack(Target.makeTargetFn(start_node, (inputs))).startJobTree(args)
+    # Ensure user supplied URLs to files
+    for input in inputs:
+        if ".com" not in inputs[input]:
+            sys.stderr.write("Invalid Input: {}".format(input))
+            raise RuntimeError("Inputs must be valid URLs")
+            #sys.exit(1)
 
-    if i != 0:
-        raise RuntimeError("Got failed jobs")
+    # Create JobTree Stack
+    #i = Stack(Target.makeTargetFn(start_node, (inputs))).startJobTree(args)
+
 
 if __name__ == "__main__":
-    from JobTree.jt_GATK import *
+    #from JobTree.jt_GATK import *
     main()
