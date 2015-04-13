@@ -1,26 +1,18 @@
 # 4-13-15
-#
+# John Vivian
 
 """
-"Hello World" script for JobTree testing
+"Hello World" script for JobTree
 """
 
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
 from optparse import OptionParser
-import sys
 
-'''
-class HelloWorld(Target):
-    def __init__(self):
-        Target.__init__(self)
-
-    def run(self):
-        sys.stdout.write("Hello World!")
-'''
 
 def HelloWorld(target):
-    sys.stdout.write("Hello World")
+    with open ('HelloWorld.txt', 'w') as file:
+        file.write('This is a triumph')
 
 if __name__ == '__main__':
 
@@ -29,5 +21,5 @@ if __name__ == '__main__':
     Stack.addJobTreeOptions(parser)
     options, args = parser.parse_args()
 
+    # Setup the job stack and launch jobTree job
     i = Stack(Target.makeTargetFn(HelloWorld)).startJobTree(options)
-
