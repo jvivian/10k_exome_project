@@ -2,7 +2,7 @@
 # John Vivian
 
 """
-"Hello World" script for JobTree
+'Hello World' script for JobTree
 """
 
 from jobTree.scriptTree.target import Target
