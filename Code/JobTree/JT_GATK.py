@@ -1,4 +1,5 @@
-__author__ = 'Jvivian'
+# 4-13-15
+# John Vivian
 
 """
 Tree Structure of GATK Pipeline is shown below
@@ -24,7 +25,7 @@ Tree Structure of GATK Pipeline is shown below
 11 = MuTect
 
 1-10 are "Target children"
-11 is a "Target follow-fn"
+11 is a "Target follow-fn", it is executed after completion of children.
 
 ==================================================================
 
@@ -51,6 +52,7 @@ from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
 import argparse
 import os
+import sys
 import boto
 
 
@@ -153,8 +155,7 @@ def main():
     for input in inputs:
         if ".com" not in inputs[input]:
             sys.stderr.write("Invalid Input: {}".format(input))
-            raise RuntimeError("Inputs must be valid URLs")
-            #sys.exit(1)
+            raise RuntimeError("Inputs must be valid URLs, please check inputs.")
 
     # Create JobTree Stack
     #i = Stack(Target.makeTargetFn(start_node, (inputs))).startJobTree(args)
