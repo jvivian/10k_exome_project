@@ -70,24 +70,18 @@ def build_parser():
     return parser
 
 
-def download(local_dir, *arg):
+def download(local_dir, inputs, *arg):
     """
     Checks for files (provided in *arg) and downloads them if not present.  *args should be URLs with the filename
     present in the URL. Example: www.foobar.com/FILENAME.vcf
     :param local_dir: str
+    :param inputs: dict
     :param arg: str
     """
 
-    # Create necessary directories if not present
-    script_name = os.path.basename(__file__)
-    if not os.path.exists(local_dir):
-        os.mkdir(local_dir)
-    if not os.path.exists(os.path.join(local_dir, script_name)):
-        os.mkdir(os.path.join(local_dir, script_name))
-
     # Acquire necessary inputs if not present
     for input in arg:
-        file_name = input.split('/')[-1]
+        file_name = inputs[input].split('/')[-1]
         if not os.path.exists(os.path.join(local_dir, script_name, file_name)):
             try:
                 subprocess.check_call(['wget', '-P', os.path.join(local_dir, script_name), input])
@@ -168,10 +162,25 @@ def main():
             sys.stderr.write("Invalid Input: {}".format(input))
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
         if input == 'normal' or input == 'tumor':
-            if len(inputs[input].split('.')) != 3:
+            if len(inputs[input].split('/')[-1].split('.')) != 3:
                 raise RuntimeError('Bam: {}, is not in the appropriate format: UUID.normal.bam or UUID.tumor.bam')
 
-        download(local_dir, inputs[input])
+    # Check that Tumor/Normal have the same UUID.
+    if inputs['normal'].split('/')[-1].split('.')[0] != inputs['tumor'].split('/')[-1].split('.')[0]:
+        raise RuntimeError('UUIDs for tumor/normal pair are not the same!')
+
+    # Create necessary directories if not present
+    script_name = os.path.basename(__file__)
+    pair = inputs['normal'].split('/')[-1].split('.')[0]
+    if not os.path.exists(local_dir):
+        os.mkdir(local_dir)
+    if not os.path.exists(os.path.join(local_dir, script_name)):
+        os.mkdir(os.path.join(local_dir, script_name))
+    if not os.path.exists(os.path.join(local_dir, script_name, pair)):
+        os.mkdir(os.path.join(local_dir, script_name, pair))
+
+
+
     # Create JobTree Stack
     #i = Stack(Target.makeTargetFn(start_node, (inputs))).startJobTree(args)
 
