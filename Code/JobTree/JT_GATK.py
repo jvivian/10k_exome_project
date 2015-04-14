@@ -64,7 +64,7 @@ def build_parser():
     parser.add_argument('-n', '--normal', required=True, help='Normal BAM URL. Format: UUID.normal.bam')
     parser.add_argument('-t', '--tumor', required=True, help='Tumor BAM URL. Format: UUID.tumor.bam')
     parser.add_argument('-p', '--phase', required=True, help='1000G_phase1.indels.hg19.sites.fixed.vcf URL')
-    parser.add_argument('-m', '--mills', required=True, help='Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf URL')
+    parser.add_argument('-m', '--mills', required=True, help='Mills_and_1000G_gold_standard.indels.hg19.sites.vcf URL')
     parser.add_argument('-d', '--dbsnp', required=True, help='dbsnp_132_b37.leftAligned.vcf URL')
     parser.add_argument('-c', '--cosmic', required=True, help='b37_cosmic_v54_120711.vcf URL')
     return parser
@@ -87,14 +87,14 @@ def download(local_dir, *arg):
 
     # Acquire necessary inputs if not present
     for input in arg:
-        fname = input.split('/')[-1]
-        if not os.path.exists(os.path.join(local_dir, script_name, fname)):
+        file_name = input.split('/')[-1]
+        if not os.path.exists(os.path.join(local_dir, script_name, file_name)):
             try:
                 subprocess.check_call(['wget', '-P', os.path.join(local_dir, script_name), input])
             except subprocess.CalledProcessError:
-                pass # handle errors in the called executable
+                raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL'.format(file_name))
             except OSError:
-                pass # executable not found
+                raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
 
 
 def upload():
@@ -102,8 +102,6 @@ def upload():
 
 def start_node(target, inputs):
     """Create .dict/.fai for reference and start children/follow-on"""
-
-
 
     target.addChildTargetFn()
     target.addChildTargetFn()
