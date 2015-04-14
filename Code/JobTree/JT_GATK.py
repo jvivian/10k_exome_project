@@ -2,7 +2,7 @@
 # John Vivian
 
 """
-Tree Structure of GATK Pipeline is shown below
+Tree Structure of GATK Pipeline
 
      0-----> 11
     / \
@@ -79,12 +79,26 @@ def download(local_dir, inputs, *arg):
     :param arg: str
     """
 
+     # Create necessary directories if not present
+    script_name = os.path.basename(__file__)
+    pair = inputs['normal'].split('/')[-1].split('.')[0]
+    if not os.path.exists(local_dir):
+        os.mkdir(local_dir)
+    if not os.path.exists(os.path.join(local_dir, script_name)):
+        os.mkdir(os.path.join(local_dir, script_name))
+    if not os.path.exists(os.path.join(local_dir, script_name, pair)):
+        os.mkdir(os.path.join(local_dir, script_name, pair))
+
     # Acquire necessary inputs if not present
     for input in arg:
         file_name = inputs[input].split('/')[-1]
-        if not os.path.exists(os.path.join(local_dir, script_name, file_name)):
+        if input == 'normal' or input == 'tumor':
+            path = os.path.join(local_dir, script_name, pair)
+        else:
+            path = os.path.join(local_dir, script_name)
+        if not os.path.exists(os.path.join(path, file_name)):
             try:
-                subprocess.check_call(['wget', '-P', os.path.join(local_dir, script_name), input])
+                subprocess.check_call(['wget', '-P', path, input])
             except subprocess.CalledProcessError:
                 raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL'.format(file_name))
             except OSError:
@@ -92,7 +106,10 @@ def download(local_dir, inputs, *arg):
 
 
 def upload():
-    pass
+    """
+    Upload files to S3, add to intermediate dictionary
+    :return:
+    """
 
 def start_node(target, inputs):
     """Create .dict/.fai for reference and start children/follow-on"""
@@ -146,7 +163,7 @@ def main():
     Stack.addJobTreeOptions(parser)
     args = parser.parse_args()
 
-    # Store inputs for easy unpacking/passing
+    # Store inputs for easy unpacking/passing. Create dict for intermediate files.
     inputs = {'ref' : args.reference_genome,
               'normal': args.normal,
               'tumor': args.tumor,
@@ -155,6 +172,7 @@ def main():
               'dbsnp': args.dbsnp,
               'cosmic': args.cosmic,
               }
+    intermediates = {}
 
     # Ensure user supplied URLs to files and that BAMs are in the appropriate format
     for input in inputs:
@@ -167,22 +185,10 @@ def main():
 
     # Check that Tumor/Normal have the same UUID.
     if inputs['normal'].split('/')[-1].split('.')[0] != inputs['tumor'].split('/')[-1].split('.')[0]:
-        raise RuntimeError('UUIDs for tumor/normal pair are not the same!')
-
-    # Create necessary directories if not present
-    script_name = os.path.basename(__file__)
-    pair = inputs['normal'].split('/')[-1].split('.')[0]
-    if not os.path.exists(local_dir):
-        os.mkdir(local_dir)
-    if not os.path.exists(os.path.join(local_dir, script_name)):
-        os.mkdir(os.path.join(local_dir, script_name))
-    if not os.path.exists(os.path.join(local_dir, script_name, pair)):
-        os.mkdir(os.path.join(local_dir, script_name, pair))
-
-
+        raise RuntimeError('UUIDs for tumor/normal pair do NOT match.')
 
     # Create JobTree Stack
-    #i = Stack(Target.makeTargetFn(start_node, (inputs))).startJobTree(args)
+    i = Stack(Target.makeTargetFn(start_node, (inputs, intermediates))).startJobTree(args)
 
 
 if __name__ == "__main__":
