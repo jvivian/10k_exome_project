@@ -53,6 +53,7 @@ from jobTree.scriptTree.stack import Stack
 import argparse
 import os
 import sys
+import subprocess
 import boto
 
 
@@ -60,8 +61,8 @@ def build_parser():
     """ Parser for file input"""
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--reference_genome', required=True, help="Reference Genome URL")
-    parser.add_argument('-n', '--normal', required=True, help='Normal BAM URL')
-    parser.add_argument('-t', '--tumor', required=True, help='Tumor BAM URL')
+    parser.add_argument('-n', '--normal', required=True, help='Normal BAM URL. Format: UUID.normal.bam')
+    parser.add_argument('-t', '--tumor', required=True, help='Tumor BAM URL. Format: UUID.tumor.bam')
     parser.add_argument('-p', '--phase', required=True, help='1000G_phase1.indels.hg19.sites.fixed.vcf URL')
     parser.add_argument('-m', '--mills', required=True, help='Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf URL')
     parser.add_argument('-d', '--dbsnp', required=True, help='dbsnp_132_b37.leftAligned.vcf URL')
@@ -70,19 +71,31 @@ def build_parser():
 
 
 def download(local_dir, *arg):
-    """Checks for inputs in local_dir, downloads from S3 if not present"""
+    """
+    Checks for files (provided in *arg) and downloads them if not present.  *args should be URLs with the filename
+    present in the URL. Example: www.foobar.com/FILENAME.vcf
+    :param local_dir: str
+    :param arg: str
+    """
 
+    # Create necessary directories if not present
     script_name = os.path.basename(__file__)
-
     if not os.path.exists(local_dir):
         os.mkdir(local_dir)
     if not os.path.exists(os.path.join(local_dir, script_name)):
         os.mkdir(os.path.join(local_dir, script_name))
 
+    # Acquire necessary inputs if not present
     for input in arg:
-        if not os.path.exists(os.path.join(local_dir, script_name, input)):
-            # Download files from S3
-            pass
+        fname = input.split('/')[-1]
+        if not os.path.exists(os.path.join(local_dir, script_name, fname)):
+            try:
+                subprocess.check_call(['wget', '-P', os.path.join(local_dir, script_name), input])
+            except subprocess.CalledProcessError:
+                pass # handle errors in the called executable
+            except OSError:
+                pass # executable not found
+
 
 def upload():
     pass
@@ -151,12 +164,16 @@ def main():
               'cosmic': args.cosmic,
               }
 
-    # Ensure user supplied URLs to files
+    # Ensure user supplied URLs to files and that BAMs are in the appropriate format
     for input in inputs:
         if ".com" not in inputs[input]:
             sys.stderr.write("Invalid Input: {}".format(input))
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
+        if input == 'normal' or input == 'tumor':
+            if len(inputs[input].split('.')) != 3:
+                raise RuntimeError('Bam: {}, is not in the appropriate format: UUID.normal.bam or UUID.tumor.bam')
 
+        download(local_dir, inputs[input])
     # Create JobTree Stack
     #i = Stack(Target.makeTargetFn(start_node, (inputs))).startJobTree(args)
 
