@@ -27,15 +27,16 @@ Tree Structure of GATK Pipeline
 1-10 are "Target children"
 11 is a "Target follow-fn", it is executed after completion of children.
 
-==================================================================
+=========================================================================
 
 local_dir = /ephemeral/jobtree
 
 shared input files go in:
-    <local_dir>/<script>/
+    <local_dir>/<script_name>/
 
 BAMS go in:
-    <local_dir>/<script>/<pair>/
+    <local_dir>/<script_name>/<pair>/
+<pair> is defined as UUID-normal:UUID-tumor
 
 files are uploaded to:
     s3://<script>/<pair>/
@@ -46,6 +47,12 @@ TARGET
     |___>    Check for inputs.  If not present, download from S3.
 2.  Run Tool
 3.  Upload to S3
+=========================================================================
+:Dependencies:
+wget        - apt-get install wget
+samtools    - apt-get install samtools
+picard      - apt-get install picard-tools
+
 """
 
 from jobTree.scriptTree.target import Target
@@ -58,7 +65,10 @@ import boto
 
 
 def build_parser():
-    """ Parser for file input"""
+    """
+    Contains arguments for the all of necessary input files
+    :return:
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--reference_genome', required=True, help="Reference Genome URL")
     parser.add_argument('-n', '--normal', required=True, help='Normal BAM URL. Format: UUID.normal.bam')
@@ -67,42 +77,53 @@ def build_parser():
     parser.add_argument('-m', '--mills', required=True, help='Mills_and_1000G_gold_standard.indels.hg19.sites.vcf URL')
     parser.add_argument('-d', '--dbsnp', required=True, help='dbsnp_132_b37.leftAligned.vcf URL')
     parser.add_argument('-c', '--cosmic', required=True, help='b37_cosmic_v54_120711.vcf URL')
+    parser.add_argument('-g', '--gatk', required=True, help='GenomeAnalysisTK.jar')
     return parser
 
 
-def download(local_dir, inputs, *arg):
+def download_inputs(shared_dir, pair_dir, inputs, *arg):
     """
-    Checks for files (provided in *arg) and downloads them if not present.  *args should be URLs with the filename
-    present in the URL. Example: www.foobar.com/FILENAME.vcf
+    Checks for files (provided in *arg) and downloads them if not present.
+    *arg are key_names from the inputs dict that are needed for that tool.
     :param local_dir: str
     :param inputs: dict
     :param arg: str
     """
 
-     # Create necessary directories if not present
-    script_name = os.path.basename(__file__)
-    pair = inputs['normal'].split('/')[-1].split('.')[0]
+    # Create necessary directories if not present
+    local_dir = os.path.split(shared_dir)[0]
     if not os.path.exists(local_dir):
         os.mkdir(local_dir)
-    if not os.path.exists(os.path.join(local_dir, script_name)):
-        os.mkdir(os.path.join(local_dir, script_name))
-    if not os.path.exists(os.path.join(local_dir, script_name, pair)):
-        os.mkdir(os.path.join(local_dir, script_name, pair))
+    if not os.path.exists(shared_dir):
+        os.mkdir(shared_dir)
+    if not os.path.exists(pair_dir):
+        os.mkdir(pair_dir)
 
     # Acquire necessary inputs if not present
     for input in arg:
         file_name = inputs[input].split('/')[-1]
         if input == 'normal' or input == 'tumor':
-            path = os.path.join(local_dir, script_name, pair)
+            path = pair_dir
         else:
-            path = os.path.join(local_dir, script_name)
+            path = shared_dir
         if not os.path.exists(os.path.join(path, file_name)):
             try:
-                subprocess.check_call(['wget', '-P', path, input])
+                subprocess.check_call(['wget', '-P', path, inputs[input]])
             except subprocess.CalledProcessError:
                 raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL'.format(file_name))
             except OSError:
                 raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
+
+
+def download_intermediates(shared_dir, pair_dir, intermediates, *arg):
+    """
+    Downloads files from S3 that have been created during the pipeline's execution.
+    *arg are key_names from the intermediate dict that are needed for that tool.
+    :param shared_dir: str
+    :param pair_dir: str
+    :param intermediates: dict
+    :param arg: str
+    """
 
 
 def upload():
@@ -111,8 +132,21 @@ def upload():
     :return:
     """
 
-def start_node(target, inputs):
-    """Create .dict/.fai for reference and start children/follow-on"""
+def start_node(target, shared_dir, pair_dir, inputs, intermediates):
+    """Create .dict/.fai for reference and start children/follow-on
+    samtools faidx reference
+    picard CreateSequenceDictionary R=reference O=output
+    """
+
+    download_inputs(shared_dir, pair_dir, inputs, "reference")
+
+    # Create index file for reference genome (.fai)
+    try:
+        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, inputs["reference"])])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('')
 
     target.addChildTargetFn()
     target.addChildTargetFn()
@@ -155,6 +189,7 @@ def mutect(target, inputs):
 
 def main():
 
+
     # Define global variable: local_dir
     local_dir = "/mnt/jobtree"
 
@@ -164,7 +199,7 @@ def main():
     args = parser.parse_args()
 
     # Store inputs for easy unpacking/passing. Create dict for intermediate files.
-    inputs = {'ref' : args.reference_genome,
+    inputs = {'reference' : args.reference_genome,
               'normal': args.normal,
               'tumor': args.tumor,
               'phase': args.phase,
@@ -181,14 +216,19 @@ def main():
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
         if input == 'normal' or input == 'tumor':
             if len(inputs[input].split('/')[-1].split('.')) != 3:
-                raise RuntimeError('Bam: {}, is not in the appropriate format: UUID.normal.bam or UUID.tumor.bam')
+                raise RuntimeError('{} Bam, is not in the appropriate format: \
+                UUID.normal.bam or UUID.tumor.bam'.format(input))
 
-    # Check that Tumor/Normal have the same UUID.
-    if inputs['normal'].split('/')[-1].split('.')[0] != inputs['tumor'].split('/')[-1].split('.')[0]:
-        raise RuntimeError('UUIDs for tumor/normal pair do NOT match.')
+    # Create directories for shared files and for isolating pairs
+    # os.path.split()[0] could be used to get shared_dir, but didn't want to do that for every function.
+    shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0])
+    pair_dir = os.path.join(shared_dir, inputs['normal'].split('/')[-1].split('.')[0] +
+                            '-normal:' + inputs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
+
+
 
     # Create JobTree Stack
-    i = Stack(Target.makeTargetFn(start_node, (inputs, intermediates))).startJobTree(args)
+    #i = Stack(Target.makeTargetFn(start_node, (shared_dir, pair_dir, inputs, intermediates))).startJobTree(args)
 
 
 if __name__ == "__main__":
