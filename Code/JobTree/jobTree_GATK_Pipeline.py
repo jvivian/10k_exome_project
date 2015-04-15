@@ -245,9 +245,7 @@ def main():
     args = parser.parse_args()
 
     # Store inputs for easy unpacking/passing. Create dict for intermediate files.
-    Inputs = namedtuple('Inputs', ['reference', 'normal', 'tumor', 'phase', 'mills', 'dbsnp', 'cosmic', 'gatk'])
-    inputs = Inputs(args.reference, args.normal, args.tumor, args.phase, args.mills, args.dbsnp, args.cosmic, args.gatk)
-    '''inputs = {'reference' : args.reference,
+    inputs = {'reference' : args.reference,
               'normal': args.normal,
               'tumor': args.tumor,
               'phase': args.phase,
@@ -256,25 +254,24 @@ def main():
               'cosmic': args.cosmic,
               'gatk' : args.gatk
               }
-    '''
+
     # Ensure user supplied URLs to files and that BAMs are in the appropriate format
-    for input in inputs._fields:
-        if ".com" not in getattr(inputs, input):
+    for input in inputs:
+        if ".com" not in inputs[input]:
             sys.stderr.write("Invalid Input: {}".format(input))
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
         if input == 'normal' or input == 'tumor':
-            if len(getattr(inputs, input).split('/')[-1].split('.')) != 3:
+            if len(inputs[input].split('/')[-1].split('.')) != 3:
                 raise RuntimeError('{} Bam, is not in the appropriate format: \
                 UUID.normal.bam or UUID.tumor.bam'.format(input))
 
     # Create directories for shared files and for isolating pairs
     # os.path.split()[0] could be used to get shared_dir, but didn't want to do that for every function.
     shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0])
-    pair_dir = os.path.join(shared_dir, inputs.normal.split('/')[-1].split('.')[0] +
-                            '-normal:' + inputs.tumor.split('/')[-1].split('.')[0] + '-tumor')
+    pair_dir = os.path.join(shared_dir, inputs['normal'].split('/')[-1].split('.')[0] +
+                            '-normal:' + inputs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
 
 
-    print pair_dir
     # Create JobTree Stack
     #i = Stack(Target.makeTargetFn(start_node, (shared_dir, pair_dir, inputs, intermediates))).startJobTree(args)
 
