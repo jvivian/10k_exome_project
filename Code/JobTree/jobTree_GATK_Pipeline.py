@@ -81,16 +81,17 @@ def build_parser():
     return parser
 
 
-def download_inputs(shared_dir, pair_dir, inputs, *arg):
+def download_inputs(pair_dir, inputs, *arg):
     """
     Checks for files (provided in *arg) and downloads them if not present.
     *arg are key_names from the inputs dict that are needed for that tool.
-    Returns a dict:  input : file_name
-    :param local_dir: str
+
+    :param pair_dir: str
     :param inputs: dict
     :param arg: str
-    :return: dict
     """
+
+    shared_dir = get_shared_dir(pair_dir)
 
     # Create necessary directories if not present
     local_dir = os.path.split(shared_dir)[0]
@@ -102,10 +103,8 @@ def download_inputs(shared_dir, pair_dir, inputs, *arg):
         os.mkdir(pair_dir)
 
     # Acquire necessary inputs if not present, return file_names as a dict.
-    file_names = {}
     for input in arg:
-        file_name = inputs[input].split('/')[-1]
-        file_names[input] = file_name
+        file_name = get_filenames(inputs, input)[input]
         if input == 'normal' or input == 'tumor':
             path = pair_dir
         else:
@@ -118,7 +117,6 @@ def download_inputs(shared_dir, pair_dir, inputs, *arg):
             except OSError:
                 raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
 
-    return file_names
 
 def download_intermediates(shared_dir, pair_dir, file_names, intermediates, *arg):
     """
@@ -134,27 +132,39 @@ def download_intermediates(shared_dir, pair_dir, file_names, intermediates, *arg
 
     return file_names
 
-def upload():
+
+def upload_to_S3():
     """
     Upload files to S3, add to intermediate dictionary
     :return:
     """
 
-def start_node(target, shared_dir, pair_dir, inputs, intermediates):
+    # Create S3 Object
+    conn = boto.connect_s3()
+
+    # Set bucket
+
+
+def start_node(target, pair_dir, inputs, intermediates):
     """Create .dict/.fai for reference and start children/follow-on
     samtools faidx reference
     picard CreateSequenceDictionary R=reference O=output
     """
 
-    file_names = download_inputs(shared_dir, pair_dir, inputs, "reference")
+    download_inputs(pair_dir, inputs, 'reference')
+
+    shared_dir = get_shared_dir(pair_dir)
+    file_names = get_filenames(inputs, 'reference')
 
     # Create index file for reference genome (.fai)
     try:
         subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names["reference"])])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
-        raise RuntimeError('')
+        raise RuntimeError('\nFailed to find "samtools." \n Install via "apt-get install samtools".')
+
+    # Create dict file for reference genome
 
     target.addChildTargetFn()
     target.addChildTargetFn()
@@ -191,8 +201,19 @@ def normal_PR(target, inputs):
 def tumor_PR(target, inputs):
     pass
 
+
 def mutect(target, inputs):
     pass
+
+
+def get_shared_dir(pair_dir):
+    return os.path.split(pair_dir)[0]
+
+def get_filenames(inputs, *arg):
+    filenames = {}
+    for input in arg:
+        filenames[input] = inputs[input].split('/')[-1]
+    return filenames
 
 
 def main():
