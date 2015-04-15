@@ -6,24 +6,27 @@ Unit tests for functions within the
 """
 
 import unittest
-#import jobTree_GATK_Pipeline
-
-class DownloadInputTests(unittest.TestCase):
-
+import os
+from jobTree_GATK_Pipeline import *
 
 
-# Here's our "unit".
-def IsOdd(n):
-    return n % 2 == 1
+class DownloadInputTest(unittest.TestCase):
 
-# Here's our "unit tests".
-class IsOddTests(unittest.TestCase):
+    def test(self):
+        shared_dir = 'test_out/'
+        pair_dir = 'test_out/pair/'
+        inputs = {'test': 'www.google.com/index.html',
+                  'normal': 'www.google.com/index.html'}
+        file_names = download_inputs(shared_dir, pair_dir, inputs, 'test', 'normal')
 
-    def testOne(self):
-        self.assertTrue(IsOdd(1))
+        self.assertTrue(os.path.exists('test_out/'))
+        self.assertTrue(os.path.exists('test_out/pair/'))
+        self.assertTrue(os.path.exists('test_out/index.html'))
+        self.assertTrue(os.path.exists('test_out/pair/index.html'))
 
-    def testTwo(self):
-        self.assertFalse(IsOdd(2))
+        self.assertEqual(file_names['test'], 'index.html')
+        self.assertEqual(file_names['normal'], 'index.html')
+
 
 def main():
     unittest.main()
