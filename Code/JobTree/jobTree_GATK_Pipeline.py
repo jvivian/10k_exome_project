@@ -62,6 +62,8 @@ import os
 import sys
 import subprocess
 import boto
+from boto.s3.key import Key
+from collections import namedtuple
 
 
 def build_parser():
@@ -70,7 +72,7 @@ def build_parser():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--reference_genome', required=True, help="Reference Genome URL")
+    parser.add_argument('-r', '--reference', required=True, help="Reference Genome URL")
     parser.add_argument('-n', '--normal', required=True, help='Normal BAM URL. Format: UUID.normal.bam')
     parser.add_argument('-t', '--tumor', required=True, help='Tumor BAM URL. Format: UUID.tumor.bam')
     parser.add_argument('-p', '--phase', required=True, help='1000G_phase1.indels.hg19.sites.fixed.vcf URL')
@@ -118,7 +120,7 @@ def download_inputs(pair_dir, inputs, *arg):
                 raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
 
 
-def download_intermediates(shared_dir, pair_dir, file_names, intermediates, *arg):
+def download_intermediates(pair_dir, file_names, intermediates, *arg):
     """
     Downloads files from S3 that have been created during the pipeline's execution.
     *arg are key_names from the intermediate dict that are needed for that tool.
@@ -133,7 +135,7 @@ def download_intermediates(shared_dir, pair_dir, file_names, intermediates, *arg
     return file_names
 
 
-def upload_to_S3():
+def upload_to_S3(pair_dir, file):
     """
     Upload files to S3, add to intermediate dictionary
     :return:
@@ -142,7 +144,20 @@ def upload_to_S3():
     # Create S3 Object
     conn = boto.connect_s3()
 
-    # Set bucket
+    # Set bucket to bd2k-<script_name>
+    bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
+    try:
+        bucket = conn.get_bucket(bucket_name)
+    except:
+        bucket = conn.create_bucket(bucket_name)
+
+    # Create Key Object -- reference intermediates placed in bucket root.
+    k = Key(bucket)
+    if '.fai' in file or '.dict' in file:
+        k.key = file
+    else:
+        k.key = os.path.join(os.path.split(pair_dir)[1], file)
+
 
 
 def start_node(target, pair_dir, inputs, intermediates):
@@ -163,6 +178,8 @@ def start_node(target, pair_dir, inputs, intermediates):
         raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
         raise RuntimeError('\nFailed to find "samtools." \n Install via "apt-get install samtools".')
+
+
 
     # Create dict file for reference genome
 
@@ -228,34 +245,36 @@ def main():
     args = parser.parse_args()
 
     # Store inputs for easy unpacking/passing. Create dict for intermediate files.
-    inputs = {'reference' : args.reference_genome,
+    Inputs = namedtuple('Inputs', ['reference', 'normal', 'tumor', 'phase', 'mills', 'dbsnp', 'cosmic', 'gatk'])
+    inputs = Inputs(args.reference, args.normal, args.tumor, args.phase, args.mills, args.dbsnp, args.cosmic, args.gatk)
+    '''inputs = {'reference' : args.reference,
               'normal': args.normal,
               'tumor': args.tumor,
               'phase': args.phase,
               'mills': args.mills,
               'dbsnp': args.dbsnp,
               'cosmic': args.cosmic,
+              'gatk' : args.gatk
               }
-    intermediates = {}
-
+    '''
     # Ensure user supplied URLs to files and that BAMs are in the appropriate format
-    for input in inputs:
-        if ".com" not in inputs[input]:
+    for input in inputs._fields:
+        if ".com" not in getattr(inputs, input):
             sys.stderr.write("Invalid Input: {}".format(input))
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
         if input == 'normal' or input == 'tumor':
-            if len(inputs[input].split('/')[-1].split('.')) != 3:
+            if len(getattr(inputs, input).split('/')[-1].split('.')) != 3:
                 raise RuntimeError('{} Bam, is not in the appropriate format: \
                 UUID.normal.bam or UUID.tumor.bam'.format(input))
 
     # Create directories for shared files and for isolating pairs
     # os.path.split()[0] could be used to get shared_dir, but didn't want to do that for every function.
     shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0])
-    pair_dir = os.path.join(shared_dir, inputs['normal'].split('/')[-1].split('.')[0] +
-                            '-normal:' + inputs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
+    pair_dir = os.path.join(shared_dir, inputs.normal.split('/')[-1].split('.')[0] +
+                            '-normal:' + inputs.tumor.split('/')[-1].split('.')[0] + '-tumor')
 
 
-
+    print pair_dir
     # Create JobTree Stack
     #i = Stack(Target.makeTargetFn(start_node, (shared_dir, pair_dir, inputs, intermediates))).startJobTree(args)
 
