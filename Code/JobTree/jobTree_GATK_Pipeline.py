@@ -85,9 +85,11 @@ def download_inputs(shared_dir, pair_dir, inputs, *arg):
     """
     Checks for files (provided in *arg) and downloads them if not present.
     *arg are key_names from the inputs dict that are needed for that tool.
+    Returns a dict:  input : file_name
     :param local_dir: str
     :param inputs: dict
     :param arg: str
+    :return: dict
     """
 
     # Create necessary directories if not present
@@ -99,9 +101,11 @@ def download_inputs(shared_dir, pair_dir, inputs, *arg):
     if not os.path.exists(pair_dir):
         os.mkdir(pair_dir)
 
-    # Acquire necessary inputs if not present
+    # Acquire necessary inputs if not present, return file_names as a dict.
+    file_names = {}
     for input in arg:
         file_name = inputs[input].split('/')[-1]
+        file_names[input] = file_name
         if input == 'normal' or input == 'tumor':
             path = pair_dir
         else:
@@ -114,17 +118,21 @@ def download_inputs(shared_dir, pair_dir, inputs, *arg):
             except OSError:
                 raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
 
+    return file_names
 
-def download_intermediates(shared_dir, pair_dir, intermediates, *arg):
+def download_intermediates(shared_dir, pair_dir, file_names, intermediates, *arg):
     """
     Downloads files from S3 that have been created during the pipeline's execution.
     *arg are key_names from the intermediate dict that are needed for that tool.
+    Always call download_intermediates after download_inputs.
     :param shared_dir: str
     :param pair_dir: str
+    :param file_names: dict
     :param intermediates: dict
     :param arg: str
     """
 
+    return file_names
 
 def upload():
     """
@@ -138,11 +146,11 @@ def start_node(target, shared_dir, pair_dir, inputs, intermediates):
     picard CreateSequenceDictionary R=reference O=output
     """
 
-    download_inputs(shared_dir, pair_dir, inputs, "reference")
+    file_names = download_inputs(shared_dir, pair_dir, inputs, "reference")
 
     # Create index file for reference genome (.fai)
     try:
-        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, inputs["reference"])])
+        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names["reference"])])
     except subprocess.CalledProcessError:
         raise RuntimeError('')
     except OSError:
