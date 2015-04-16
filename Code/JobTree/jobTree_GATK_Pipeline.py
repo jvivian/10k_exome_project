@@ -29,7 +29,7 @@ Tree Structure of GATK Pipeline
 
 =========================================================================
 
-local_dir = /ephemeral/jobtree
+local_dir = /mnt/jobtree
 
 shared input files go in:
     <local_dir>/<script_name>/
@@ -120,19 +120,17 @@ def download_inputs(pair_dir, inputs, *arg):
                 raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
 
 
-def download_intermediates(pair_dir, file_names, intermediates, *arg):
+def download_intermediates(intermediates, *arg):
     """
     Downloads files from S3 that have been created during the pipeline's execution.
     *arg are key_names from the intermediate dict that are needed for that tool.
     Always call download_intermediates after download_inputs.
-    :param shared_dir: str
     :param pair_dir: str
     :param file_names: dict
-    :param intermediates: dict
     :param arg: str
     """
 
-    return file_names
+    pass
 
 
 def upload_to_S3(pair_dir, file):
@@ -169,6 +167,7 @@ def upload_to_S3(pair_dir, file):
     except:
         raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file))
 
+
 def start_node(target, pair_dir, inputs, intermediates):
     """Create .dict/.fai for reference and start children/follow-on
     samtools faidx reference
@@ -182,51 +181,66 @@ def start_node(target, pair_dir, inputs, intermediates):
 
     # Create index file for reference genome (.fai)
     try:
-        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names["reference"])])
+        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names['reference'])])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
-        raise RuntimeError('\nFailed to find "samtools." \n Install via "apt-get install samtools".')
+        raise RuntimeError('\nFailed to find "samtools". \n Install via "apt-get install samtools".')
 
-    # Create dict file for reference genome
+    # Create dict file for reference genome (.dict)
+    try:
+        subprocess.check_call(['picard', 'CreateSequenceDictionary',
+                               'R={}'.format(os.path.join(shared_dir, file_names['reference'])),
+                               'O={}.dict'.format(os.path.join(shared_dir, file_names['reference']))])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('\nPicard failed to create reference dictionary')
+    except OSError:
+        raise RuntimeError('\nFailed to find "picard". \n Install via "apt-get install picard-tools')
 
+    # Upload files to S3
+    intermediates['fai'] = os.path.join(shared_dir, file_names['reference']+'.fai')
+    intermediates['dict'] = os.path.join(shared_dir, file_names['reference'] + '.dict')
+    upload_to_S3(pair_dir, intermediates['fai'])
+    upload_to_S3(pair_dir, intermediates['dict'])
+
+
+    # Spawn children and follow-on
     target.addChildTargetFn()
     target.addChildTargetFn()
     target.addFollowOnTargetFn()
 
-def normal_index(target, inputs):
+def normal_index(target, pair_dir, inputs, intermediates):
     """Creates index file for BAM"""
     pass
 
-def tumor_index(target, inputs):
+def tumor_index(target, pair_dir, inputs, intermediates):
     pass
 
-def normal_RTC(target, inputs):
+def normal_RTC(target, pair_dir, inputs, intermediates):
     pass
 
-def tumor_RTC(target, inputs):
+def tumor_RTC(target, pair_dir, inputs, intermediates):
     pass
 
-def normal_IR(target, inputs):
+def normal_IR(target, pair_dir, inputs, intermediates):
     pass
 
-def tumor_IR(target, inputs):
+def tumor_IR(target, pair_dir, inputs, intermediates):
     pass
 
-def normal_BR(target, inputs):
+def normal_BR(target, pair_dir, inputs, intermediates):
     pass
 
-def tumor_BR(target, inputs):
+def tumor_BR(target, pair_dir, inputs, intermediates):
     pass
 
-def normal_PR(target, inputs):
+def normal_PR(target, pair_dir, inputs, intermediates):
     pass
 
-def tumor_PR(target, inputs):
+def tumor_PR(target, pair_dir, inputs, intermediates):
     pass
 
-
-def mutect(target, inputs):
+def mutect(target, pair_dir, inputs, intermediates):
     pass
 
 
@@ -241,7 +255,6 @@ def get_filenames(inputs, *arg):
 
 
 def main():
-
 
     # Define global variable: local_dir
     local_dir = "/mnt/jobtree"
@@ -273,14 +286,14 @@ def main():
                 UUID.normal.bam or UUID.tumor.bam'.format(input))
 
     # Create directories for shared files and for isolating pairs
-    # os.path.split()[0] could be used to get shared_dir, but didn't want to do that for every function.
     shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0])
     pair_dir = os.path.join(shared_dir, inputs['normal'].split('/')[-1].split('.')[0] +
                             '-normal:' + inputs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
 
-
+    
     # Create JobTree Stack
-    #i = Stack(Target.makeTargetFn(start_node, (shared_dir, pair_dir, inputs, intermediates))).startJobTree(args)
+    intermediates = {}
+    i = Stack(Target.makeTargetFn(start_node, (pair_dir, inputs, intermediates))).startJobTree(args)
 
 
 if __name__ == "__main__":
