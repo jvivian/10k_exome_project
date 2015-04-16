@@ -137,7 +137,10 @@ def download_intermediates(pair_dir, file_names, intermediates, *arg):
 
 def upload_to_S3(pair_dir, file):
     """
-    Upload files to S3, add to intermediate dictionary
+    file should be the relative path to the file.
+    s3://bd2k_<script_name>/<pair>
+    :param pair_dir: str
+    :param file: str
     :return:
     """
 
@@ -151,14 +154,20 @@ def upload_to_S3(pair_dir, file):
     except:
         bucket = conn.create_bucket(bucket_name)
 
-    # Create Key Object -- reference intermediates placed in bucket root.
+    # Create Key Object -- reference intermediates placed in bucket root, all else in s3://bucket/<pair>
     k = Key(bucket)
+    if not os.path.exists(file):
+        raise RuntimeError('File at path: {}, does not exist'.format(file))
     if '.fai' in file or '.dict' in file:
-        k.key = file
+        k.name = file.split('/')[-1]
     else:
-        k.key = os.path.join(os.path.split(pair_dir)[1], file)
+        k.name = os.path.join(os.path.split(pair_dir)[1], file.split('/')[-1])
 
-
+    # Upload to S3
+    try:
+        k.set_contents_from_filename(file)
+    except:
+        raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file))
 
 def start_node(target, pair_dir, inputs, intermediates):
     """Create .dict/.fai for reference and start children/follow-on
@@ -178,8 +187,6 @@ def start_node(target, pair_dir, inputs, intermediates):
         raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
         raise RuntimeError('\nFailed to find "samtools." \n Install via "apt-get install samtools".')
-
-
 
     # Create dict file for reference genome
 
