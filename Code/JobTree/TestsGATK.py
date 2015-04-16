@@ -6,7 +6,7 @@ Unit tests for functions within the
 """
 
 import unittest
-from jobTree_GATK_Pipeline import *
+from jobtree_gatk_pipeline import *
 
 
 class DownloadInputTest(unittest.TestCase):
@@ -22,6 +22,25 @@ class DownloadInputTest(unittest.TestCase):
         self.assertTrue(os.path.exists('test_out/index.html'))
         self.assertTrue(os.path.exists('test_out/pair/index.html'))
 
+
+class UploadToS3Test(unittest.TestCase):
+
+    def test(self):
+        pair_dir = 'test/pair'
+        file1 = 'test_out/index.html'
+        file2 = 'test_out/index.fai'
+
+        upload_to_S3(pair_dir, file1)
+        upload_to_S3(pair_dir, file2)
+
+        conn = boto.connect_s3()
+        bucket = conn.get_bucket('bd2k-jobtree_gatk_pipeline')
+        keys = bucket.get_all_keys()
+
+        self.assertTrue('index.fai' in [x.name for x in keys])
+        self.assertTrue('pair/index.html' in [x.name for x in keys])
+
+
 class GetFileNamesTest(unittest.TestCase):
 
     def test(self):
@@ -32,6 +51,7 @@ class GetFileNamesTest(unittest.TestCase):
         self.assertEqual(file_names['test'], 'index.html')
         self.assertEqual(file_names['normal'], 'index.html')
 
+
 class GetSharedDirTest(unittest.TestCase):
 
     def test(self):
@@ -39,6 +59,7 @@ class GetSharedDirTest(unittest.TestCase):
         shared_dir = get_shared_dir(pair_dir)
 
         self.assertEqual(shared_dir, '/mnt/jobTree/{}'.format(os.path.basename(__file__).split('.')[0]))
+
 
 def main():
     unittest.main()
