@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-python jobTree_GATK_Pipeline.py \
+python jobtree_gatk_pipeline.py \
 --reference "https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Homo_sapiens_assembly19.fasta" \
 --normal "https://s3-us-west-2.amazonaws.com/bd2k-test-data/pair9.normal.bam" \
 --tumor "https://s3-us-west-2.amazonaws.com/bd2k-test-data/pair9.tumor.bam" \
