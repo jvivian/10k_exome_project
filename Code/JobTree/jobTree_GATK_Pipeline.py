@@ -69,7 +69,6 @@ from jobTree.scriptTree.stack import Stack
 from jobTree.scriptTree.target import Target
 
 
-
 def build_parser():
     """
     Contains arguments for the all of necessary input files
@@ -87,6 +86,214 @@ def build_parser():
     return parser
 
 
+def start_node(target, GATK):
+    """Create .dict/.fai for reference and start children/follow-on
+    samtools faidx reference
+    picard CreateSequenceDictionary R=reference O=output
+    """
+
+    download_inputs(pair_dir, inputs, 'reference')
+
+    shared_dir = get_shared_dir(pair_dir)
+    file_names = get_filenames(inputs, 'reference')
+
+    # Create index file for reference genome (.fai)
+    try:
+        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names['reference'])])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('\nsamtools failed to create reference index!')
+    except OSError:
+        raise RuntimeError('\nFailed to find "samtools". \n Install via "apt-get install samtools".')
+
+    # Create dict file for reference genome (.dict)
+    try:
+        subprocess.check_call(['picard', 'CreateSequenceDictionary',
+                               'R={}'.format(os.path.join(shared_dir, file_names['reference'])),
+                               'O={}.dict'.format(os.path.join(shared_dir, file_names['reference']))])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('\nPicard failed to create reference dictionary')
+    except OSError:
+        raise RuntimeError('\nFailed to find "picard". \n Install via "apt-get install picard-tools')
+
+    # Save local path to intermediates
+    intermediates['fai'] = os.path.join(shared_dir, file_names['reference'] + '.fai')
+    intermediates['dict'] = os.path.join(shared_dir, file_names['reference'] + '.dict')
+
+    # upload to S3
+    upload_to_S3(pair_dir, intermediates['fai'])
+    upload_to_S3(pair_dir, intermediates['dict'])
+
+    # Spawn children and follow-on
+    target.addChildTargetFn()
+    target.addChildTargetFn()
+    target.addFollowOnTargetFn()
+
+
+def normal_index(target, pair_dir, inputs, intermediates):
+    """Creates index file for BAM"""
+    pass
+
+
+def tumor_index(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def normal_rtc(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def tumor_rtc(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def normal_ir(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def tumor_ir(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def normal_br(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def tumor_br(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def normal_pr(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def tumor_pr(target, pair_dir, inputs, intermediates):
+    pass
+
+
+def mutect(target, pair_dir, inputs, intermediates):
+    pass
+
+
+
+class SupportGATK(object):
+    """ Class to encapsulate all necessary data structures and methods used in the pipeline.
+    """
+
+    def __init__(self, input_URLs, shared_dir, pair_dir):
+        self.input_URLs = input_URLs
+        self.shared_dir = shared_dir
+        self.pair_dir = pair_dir
+
+
+    def get_input_path(self, name):
+
+        shared_dir = SupportGATK.get_shared_dir(self.pair_dir)
+
+        # Get path to file
+        shared = name != 'tumor.bam' and name != 'normal.bam'
+        dir_path = shared_dir if shared else self.pair_dir
+        file_path = os.path.join(dir_path, name)
+
+        # Create necessary directories if not present
+        mkdir_p(dir_path)
+
+        # Check if file exists, download if not present
+        if not os.path.exists(file_path):
+            try:
+                subprocess.check_call(['curl', '-fs', self.input_URLs[name], '-o', file_path])
+            except subprocess.CalledProcessError:
+                raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL')
+            except OSError:
+                raise RuntimeError('Failed to find "curl". Install via "apt-get install curl"')
+
+        return file_path
+
+
+    def upload_to_S3(self, file):
+        """
+        file should be the relative path to the file.
+        s3://bd2k_<script_name>/<pair>
+        :param pair_dir: str
+        :param file: str
+        :return:
+        """
+
+        # Create S3 Object
+        conn = boto.connect_s3()
+
+        # Set bucket to bd2k-<script_name>
+        bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
+        try:
+            bucket = conn.get_bucket(bucket_name)
+        except:
+            bucket = conn.create_bucket(bucket_name)
+
+        # Create Key Object -- reference intermediates placed in bucket root, all else in s3://bucket/<pair>
+        k = Key(bucket)
+        if not os.path.exists(file):
+            raise RuntimeError('File at path: {}, does not exist'.format(file))
+        if '.fai' in file or '.dict' in file:
+            k.name = file.split('/')[-1]
+        else:
+            k.name = os.path.join(os.path.split(self.pair_dir)[1], file.split('/')[-1])
+
+        # Upload to S3
+        try:
+            k.set_contents_from_filename(file)
+        except:
+            raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file))
+
+
+    def get_shared_dir(self):
+        return os.path.split(self.pair_dir)[0]
+
+def main():
+    # Define global variable: local_dir
+    local_dir = "/mnt/jobtree"
+
+    # Handle parser logic
+    parser = build_parser()
+    Stack.addJobTreeOptions(parser)
+    args = parser.parse_args()
+
+    # Store inputs for easy unpacking/passing. Create dict for intermediate files.
+    input_URLs = {'reference.fasta': args.reference,
+                  'normal.bam': args.normal,
+                  'tumor.bam': args.tumor,
+                  'phase.vcf': args.phase,
+                  'mills.vcf': args.mills,
+                  'dbsnp.vcf': args.dbsnp,
+                  'cosmic.vcf': args.cosmic,
+                  'gatk.jar': args.gatk
+                  }
+
+    # Ensure user supplied URLs to files and that BAMs are in the appropriate format
+    for input in input_URLs:
+        if ".com" not in input_URLs[input]:
+            sys.stderr.write("Invalid Input: {}".format(input))
+            raise RuntimeError("Inputs must be valid URLs, please check inputs.")
+        if input == 'normal' or input == 'tumor':
+            if len(input_URLs[input].split('/')[-1].split('.')) != 3:
+                raise RuntimeError('{} Bam, is not in the appropriate format: \
+                UUID.normal.bam or UUID.tumor.bam'.format(input))
+
+    # Create directories for shared files and for isolating pairs
+    shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0], str(uuid.uuid4()))
+    pair_dir = os.path.join(shared_dir, input_URLs['normal'].split('/')[-1].split('.')[0] +
+                            '-normal:' + input_URLs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
+
+
+    # Create JobTree Stack
+    # i = Stack(Target.makeTargetFn(start_node, (pair_dir, input_URLs, intermediates))).startJobTree(args)
+
+
+if __name__ == "__main__":
+    # from JobTree.jt_GATK import *
+    main()
+
+
+# Potentially defunct functions/methods live here. Delete when possible.
+'''
 def download_inputs(pair_dir, inputs, *arg):
     """
     Checks for files (provided in *arg) and downloads them if not present.
@@ -124,207 +331,10 @@ def download_inputs(pair_dir, inputs, *arg):
                 raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
 
 
-def upload_to_S3(pair_dir, file):
-    """
-    file should be the relative path to the file.
-    s3://bd2k_<script_name>/<pair>
-    :param pair_dir: str
-    :param file: str
-    :return:
-    """
-
-    # Create S3 Object
-    conn = boto.connect_s3()
-
-    # Set bucket to bd2k-<script_name>
-    bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
-    try:
-        bucket = conn.get_bucket(bucket_name)
-    except:
-        bucket = conn.create_bucket(bucket_name)
-
-    # Create Key Object -- reference intermediates placed in bucket root, all else in s3://bucket/<pair>
-    k = Key(bucket)
-    if not os.path.exists(file):
-        raise RuntimeError('File at path: {}, does not exist'.format(file))
-    if '.fai' in file or '.dict' in file:
-        k.name = file.split('/')[-1]
-    else:
-        k.name = os.path.join(os.path.split(pair_dir)[1], file.split('/')[-1])
-
-    # Upload to S3
-    try:
-        k.set_contents_from_filename(file)
-    except:
-        raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file))
-
-def start_node(target, pair_dir, inputs, intermediates):
-    """Create .dict/.fai for reference and start children/follow-on
-    samtools faidx reference
-    picard CreateSequenceDictionary R=reference O=output
-    """
-
-    download_inputs(pair_dir, inputs, 'reference')
-
-    shared_dir = get_shared_dir(pair_dir)
-    file_names = get_filenames(inputs, 'reference')
-
-    # Create index file for reference genome (.fai)
-    try:
-        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names['reference'])])
-    except subprocess.CalledProcessError:
-        raise RuntimeError('\nsamtools failed to create reference index!')
-    except OSError:
-        raise RuntimeError('\nFailed to find "samtools". \n Install via "apt-get install samtools".')
-
-    # Create dict file for reference genome (.dict)
-    try:
-        subprocess.check_call(['picard', 'CreateSequenceDictionary',
-                               'R={}'.format(os.path.join(shared_dir, file_names['reference'])),
-                               'O={}.dict'.format(os.path.join(shared_dir, file_names['reference']))])
-    except subprocess.CalledProcessError:
-        raise RuntimeError('\nPicard failed to create reference dictionary')
-    except OSError:
-        raise RuntimeError('\nFailed to find "picard". \n Install via "apt-get install picard-tools')
-
-    # Save local path to intermediates
-    intermediates['fai'] = os.path.join(shared_dir, file_names['reference']+'.fai')
-    intermediates['dict'] = os.path.join(shared_dir, file_names['reference'] + '.dict')
-
-    # upload to S3
-    upload_to_S3(pair_dir, intermediates['fai'])
-    upload_to_S3(pair_dir, intermediates['dict'])
-
-    # Spawn children and follow-on
-    target.addChildTargetFn()
-    target.addChildTargetFn()
-    target.addFollowOnTargetFn()
-
-def get_input_path(name):
-
-    # Get path to file
-    shared = name != 'tumor.bam' and name != 'normal.bam'
-    dir_path = shared_dir if shared else pair_dir
-    file_path = os.path.join(dir_path, name)
-
-    # Create necessary directories if not present
-    mkdir_p(dir_path)
-
-    #
-
-
-
-
-
-
-
-
-
-
-def normal_index(target, pair_dir, inputs, intermediates):
-    """Creates index file for BAM"""
-    pass
-
-def tumor_index(target, pair_dir, inputs, intermediates):
-    pass
-
-def normal_RTC(target, pair_dir, inputs, intermediates):
-    pass
-
-def tumor_RTC(target, pair_dir, inputs, intermediates):
-    pass
-
-def normal_IR(target, pair_dir, inputs, intermediates):
-    pass
-
-def tumor_IR(target, pair_dir, inputs, intermediates):
-    pass
-
-def normal_BR(target, pair_dir, inputs, intermediates):
-    pass
-
-def tumor_BR(target, pair_dir, inputs, intermediates):
-    pass
-
-def normal_PR(target, pair_dir, inputs, intermediates):
-    pass
-
-def tumor_PR(target, pair_dir, inputs, intermediates):
-    pass
-
-def mutect(target, pair_dir, inputs, intermediates):
-    pass
-
-
-def get_shared_dir(pair_dir):
-    return os.path.split(pair_dir)[0]
-
 def get_filenames(inputs, *arg):
     filenames = {}
     for input in arg:
         filenames[input] = inputs[input].split('/')[-1]
     return filenames
 
-def mkdir_p( path ):
-    """
-    The equivalent of mkdir -p
-    https://github.com/BD2KGenomics/bd2k-python-lib/blob/master/src/bd2k/util/files.py
-    """
-    try:
-        os.makedirs( path )
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir( path ):
-            pass
-        else:
-            raise
-
-# Global Variables
-shared_dir = None
-pair_dir = None
-input_URLs = None
-
-def main():
-
-    global shared_dir, pair_dir, input_URLs
-
-    # Define global variable: local_dir
-    local_dir = "/mnt/jobtree"
-
-    # Handle parser logic
-    parser = build_parser()
-    Stack.addJobTreeOptions(parser)
-    args = parser.parse_args()
-
-    # Store inputs for easy unpacking/passing. Create dict for intermediate files.
-    input_URLs = {'reference' : args.reference,
-              'normal': args.normal,
-              'tumor': args.tumor,
-              'phase': args.phase,
-              'mills': args.mills,
-              'dbsnp': args.dbsnp,
-              'cosmic': args.cosmic,
-              'gatk' : args.gatk
-              }
-
-    # Ensure user supplied URLs to files and that BAMs are in the appropriate format
-    for input in input_URLs:
-        if ".com" not in input_URLs[input]:
-            sys.stderr.write("Invalid Input: {}".format(input))
-            raise RuntimeError("Inputs must be valid URLs, please check inputs.")
-        if input == 'normal' or input == 'tumor':
-            if len(input_URLs[input].split('/')[-1].split('.')) != 3:
-                raise RuntimeError('{} Bam, is not in the appropriate format: \
-                UUID.normal.bam or UUID.tumor.bam'.format(input))
-
-    # Create directories for shared files and for isolating pairs
-    shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0], str(uuid.uuid4()))
-    pair_dir = os.path.join(shared_dir, input_URLs['normal'].split('/')[-1].split('.')[0] +
-                            '-normal:' + input_URLs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
-
-
-    # Create JobTree Stack
-    #i = Stack(Target.makeTargetFn(start_node, (input_URLs, intermediates))).startJobTree(args)
-
-if __name__ == "__main__":
-    #from JobTree.jt_GATK import *
-    main()
+'''
