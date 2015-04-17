@@ -32,27 +32,20 @@ Tree Structure of GATK Pipeline
 local_dir = /mnt/jobtree
 
 shared input files go in:
-    <local_dir>/<script_name>/
+    <local_dir>/<script_name>/<UUID4>
 
 BAMS go in:
-    <local_dir>/<script_name>/<pair>/
+    <local_dir>/<script_name>/<UUID4>/<pair>/
 <pair> is defined as UUID-normal:UUID-tumor
 
 files are uploaded to:
-    s3://<script>/<pair>/
+    s3://bd2k-<script>/<UUID4>/<pair>/
 
-TARGET
------------
-1. Call **Download** function
-    |___>    Check for inputs.  If not present, download from S3.
-2.  Run Tool
-3.  Upload to S3
 =========================================================================
 :Dependencies:
-wget        - apt-get install wget
+curl        - apt-get install curl
 samtools    - apt-get install samtools
 picard      - apt-get install picard-tools
-
 """
 
 import argparse
@@ -86,20 +79,17 @@ def build_parser():
     return parser
 
 
-def start_node(target, GATK):
+def start_node(target, gatk):
     """Create .dict/.fai for reference and start children/follow-on
     samtools faidx reference
     picard CreateSequenceDictionary R=reference O=output
     """
 
-    download_inputs(pair_dir, inputs, 'reference')
-
-    shared_dir = get_shared_dir(pair_dir)
-    file_names = get_filenames(inputs, 'reference')
+    reference = gatk.get_input_path('reference.fasta')
 
     # Create index file for reference genome (.fai)
     try:
-        subprocess.check_call(['samtools', 'faidx', os.path.join(shared_dir, file_names['reference'])])
+        subprocess.check_call(['samtools', 'faidx', reference])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
@@ -108,20 +98,20 @@ def start_node(target, GATK):
     # Create dict file for reference genome (.dict)
     try:
         subprocess.check_call(['picard', 'CreateSequenceDictionary',
-                               'R={}'.format(os.path.join(shared_dir, file_names['reference'])),
-                               'O={}.dict'.format(os.path.join(shared_dir, file_names['reference']))])
+                               'R={}'.format(reference),
+                               'O={}.dict'.format(reference)])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nPicard failed to create reference dictionary')
     except OSError:
         raise RuntimeError('\nFailed to find "picard". \n Install via "apt-get install picard-tools')
 
     # Save local path to intermediates
-    intermediates['fai'] = os.path.join(shared_dir, file_names['reference'] + '.fai')
-    intermediates['dict'] = os.path.join(shared_dir, file_names['reference'] + '.dict')
+    #intermediates['fai'] = os.path.join(shared_dir, file_names['reference'] + '.fai')
+    #intermediates['dict'] = os.path.join(shared_dir, file_names['reference'] + '.dict')
 
     # upload to S3
-    upload_to_S3(pair_dir, intermediates['fai'])
-    upload_to_S3(pair_dir, intermediates['dict'])
+    gatk.upload_to_S3()
+    gatk.upload_to_S3()
 
     # Spawn children and follow-on
     target.addChildTargetFn()
@@ -179,23 +169,24 @@ class SupportGATK(object):
     """ Class to encapsulate all necessary data structures and methods used in the pipeline.
     """
 
-    def __init__(self, input_URLs, shared_dir, pair_dir):
+    def __init__(self, input_URLs, local_dir, shared_dir, pair_dir):
         self.input_URLs = input_URLs
         self.shared_dir = shared_dir
         self.pair_dir = pair_dir
+        self.local_dir = local_dir
 
 
     def get_input_path(self, name):
-
-        shared_dir = SupportGATK.get_shared_dir(self.pair_dir)
-
+        """
+        Accepts filename. Downloads if not present. returns path to file.
+        """
         # Get path to file
         shared = name != 'tumor.bam' and name != 'normal.bam'
-        dir_path = shared_dir if shared else self.pair_dir
+        dir_path = self.shared_dir if shared else self.pair_dir
         file_path = os.path.join(dir_path, name)
 
         # Create necessary directories if not present
-        mkdir_p(dir_path)
+        self.mkdir_p(dir_path)
 
         # Check if file exists, download if not present
         if not os.path.exists(file_path):
@@ -206,18 +197,18 @@ class SupportGATK(object):
             except OSError:
                 raise RuntimeError('Failed to find "curl". Install via "apt-get install curl"')
 
+        assert os.path.exists(file_path)
+
         return file_path
 
 
     def upload_to_S3(self, file):
         """
-        file should be the relative path to the file.
-        s3://bd2k_<script_name>/<pair>
-        :param pair_dir: str
+        file should be the path to the file, ex:  /mnt/jobtree/script/uuid4/pair/foo.vcf
+        Files will be uploaded to: s3://bd2k-<script_name>/<UUID4> if shared
+                              and: s3://bd2k-<script_name>/<UUID4>/<pair> if specific to that T/N pair.
         :param file: str
-        :return:
         """
-
         # Create S3 Object
         conn = boto.connect_s3()
 
@@ -233,9 +224,10 @@ class SupportGATK(object):
         if not os.path.exists(file):
             raise RuntimeError('File at path: {}, does not exist'.format(file))
         if '.fai' in file or '.dict' in file:
-            k.name = file.split('/')[-1]
+            k.name = os.path.join(self.pair_dir.split(os.sep)[-2], os.path.split(file)[1])
         else:
-            k.name = os.path.join(os.path.split(self.pair_dir)[1], file.split('/')[-1])
+            k.name = os.path.join(self.pair_dir.split(os.sep)[-2],
+                                  self.pair_dir.split(os.sep)[-1], os.path.split(file)[1])
 
         # Upload to S3
         try:
@@ -243,9 +235,18 @@ class SupportGATK(object):
         except:
             raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file))
 
-
-    def get_shared_dir(self):
-        return os.path.split(self.pair_dir)[0]
+    def mkdir_p(self, path):
+        """
+        The equivalent of mkdir -p
+        https://github.com/BD2KGenomics/bd2k-python-lib/blob/master/src/bd2k/util/files.py
+        """
+        try:
+            os.makedirs(path)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
 
 def main():
     # Define global variable: local_dir
@@ -282,9 +283,11 @@ def main():
     pair_dir = os.path.join(shared_dir, input_URLs['normal'].split('/')[-1].split('.')[0] +
                             '-normal:' + input_URLs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
 
+    # Create SupportGATK instance
+    gatk = SupportGATK(input_URLs, local_dir, shared_dir, pair_dir)
 
     # Create JobTree Stack
-    # i = Stack(Target.makeTargetFn(start_node, (pair_dir, input_URLs, intermediates))).startJobTree(args)
+    i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
 
 
 if __name__ == "__main__":
@@ -337,4 +340,7 @@ def get_filenames(inputs, *arg):
         filenames[input] = inputs[input].split('/')[-1]
     return filenames
 
+
+def get_shared_dir(self):
+        return os.path.split(self.pair_dir)[0]
 '''
