@@ -28,7 +28,6 @@ Tree Structure of GATK Pipeline
 11 is a "Target follow-fn", it is executed after completion of children.
 
 =========================================================================
-
 local_dir = /mnt/jobtree
 
 shared input files go in:
@@ -39,13 +38,15 @@ BAMS go in:
 <pair> is defined as UUID-normal:UUID-tumor
 
 files are uploaded to:
-    s3://bd2k-<script>/<UUID4>/<pair>/
+    s3://bd2k-<script>/<UUID4>/ if shared (.fai/.dict)
+    s3://bd2k-<script>/<UUID4>/<pair> if specific to that T/N pair.
 
 =========================================================================
 :Dependencies:
 curl        - apt-get install curl
 samtools    - apt-get install samtools
 picard      - apt-get install picard-tools
+Active Internet Connection (Boto)
 """
 
 import argparse
@@ -57,6 +58,7 @@ import uuid
 
 import boto
 from boto.s3.key import Key
+from boto.exception import S3ResponseError
 
 from jobTree.scriptTree.stack import Stack
 from jobTree.scriptTree.target import Target
@@ -105,10 +107,6 @@ def start_node(target, gatk):
     except OSError:
         raise RuntimeError('\nFailed to find "picard". \n Install via "apt-get install picard-tools')
 
-    # Save local path to intermediates
-    #intermediates['fai'] = os.path.join(shared_dir, file_names['reference'] + '.fai')
-    #intermediates['dict'] = os.path.join(shared_dir, file_names['reference'] + '.dict')
-
     # upload to S3
     gatk.upload_to_S3()
     gatk.upload_to_S3()
@@ -120,7 +118,6 @@ def start_node(target, gatk):
 
 
 def normal_index(target, pair_dir, inputs, intermediates):
-    """Creates index file for BAM"""
     pass
 
 
@@ -201,13 +198,40 @@ class SupportGATK(object):
 
         return file_path
 
+    def get_intermediate_path(self, name):
 
-    def upload_to_S3(self, file):
+        # Get path to file
+        shared = '.fai' in name or '.dict' in name
+        dir_path = self.shared_dir if shared else self.pair_dir
+        file_path = os.path.join(dir_path, name)
+
+        # Create necessary directories if not present
+        self.mkdir_p(dir_path)
+
+        # Check if file exists, download if not present from s3
+        if not os.path.exists(file_path):
+            bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
+            try:
+                conn = boto.connect_s3()
+                bucket = conn.get_bucket(bucket_name)
+                k = Key(bucket)
+                k.name = file_path
+            except:
+                raise RuntimeError('Could not connect to S3 and retrieve bucket: {}'.format(bucket_name))
+
+            try:
+                k.get_contents_to_filename(file_path)
+            except:
+                raise RuntimeError('Contents from S3 could not be written to: {}'.format(file_path))
+
+        return file_path
+
+    def upload_to_S3(self, file_path):
         """
         file should be the path to the file, ex:  /mnt/jobtree/script/uuid4/pair/foo.vcf
         Files will be uploaded to: s3://bd2k-<script_name>/<UUID4> if shared
                               and: s3://bd2k-<script_name>/<UUID4>/<pair> if specific to that T/N pair.
-        :param file: str
+        :param file_path: str
         """
         # Create S3 Object
         conn = boto.connect_s3()
@@ -216,24 +240,27 @@ class SupportGATK(object):
         bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
         try:
             bucket = conn.get_bucket(bucket_name)
-        except:
-            bucket = conn.create_bucket(bucket_name)
+        except S3ResponseError as e:
+            if e.error_code == 'NoSuchBucket':
+                bucket = conn.create_bucket(bucket_name)
+            else:
+                raise e
 
         # Create Key Object -- reference intermediates placed in bucket root, all else in s3://bucket/<pair>
         k = Key(bucket)
-        if not os.path.exists(file):
-            raise RuntimeError('File at path: {}, does not exist'.format(file))
-        if '.fai' in file or '.dict' in file:
-            k.name = os.path.join(self.pair_dir.split(os.sep)[-2], os.path.split(file)[1])
+        if not os.path.exists(file_path):
+            raise RuntimeError('File at path: {}, does not exist'.format(file_path))
+        if '.fai' in file_path or '.dict' in file_path:
+            k.name = os.path.join(self.pair_dir.split(os.sep)[-2], os.path.split(file_path)[1])
         else:
             k.name = os.path.join(self.pair_dir.split(os.sep)[-2],
-                                  self.pair_dir.split(os.sep)[-1], os.path.split(file)[1])
+                                  self.pair_dir.split(os.sep)[-1], os.path.split(file_path)[1])
 
         # Upload to S3
         try:
-            k.set_contents_from_filename(file)
+            k.set_contents_from_filename(file_path)
         except:
-            raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file))
+            raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file_path))
 
     def mkdir_p(self, path):
         """
