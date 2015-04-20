@@ -39,3 +39,6 @@ if __name__ == '__main__':
     hw = HelloWorld(s1, s2)
     # Setup the job stack and launch jobTree job
     i = Stack(Target.makeTargetFn(hello_world, (hw,))).startJobTree(options)
+
+    if i != 0:
+        raise RuntimeError("Some of the jobs failed")
