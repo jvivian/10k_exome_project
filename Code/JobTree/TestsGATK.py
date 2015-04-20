@@ -2,7 +2,7 @@
 # 4-14-15
 
 """
-Unit tests for functions within the
+Unit tests for functions within the SupportGATK class within jobtree_gatk_pipeline.py
 """
 
 import unittest
