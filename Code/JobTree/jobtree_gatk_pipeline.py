@@ -99,7 +99,7 @@ def start_node(target, gatk):
 
     # Create dict file for reference genome (.dict)
     try:
-        subprocess.check_call(['picard', 'CreateSequenceDictionary',
+        subprocess.check_call(['picard-tools', 'CreateSequenceDictionary',
                                'R={}'.format(reference),
                                'O={}.dict'.format(reference)])
     except subprocess.CalledProcessError:
