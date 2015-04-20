@@ -4,7 +4,7 @@
 """
 Tree Structure of GATK Pipeline
 
-     0-----> 11
+     0-----> 11 ---- 12
     / \
    1   2
    |   |
@@ -23,11 +23,14 @@ Tree Structure of GATK Pipeline
 7,8 = Base Recalibration
 9,10 = Recalibrate (PrintReads)
 11 = MuTect
+12 = teardown / cleanup
 
-1-10 are "Target children"
+1-10, and 12 are "Target children"
 11 is a "Target follow-fn", it is executed after completion of children.
 
 =========================================================================
+:Directory Structure:
+
 local_dir = /mnt/jobtree
 
 shared input files go in:
@@ -43,9 +46,10 @@ files are uploaded to:
 
 =========================================================================
 :Dependencies:
-curl        - apt-get install curl
-samtools    - apt-get install samtools
-picard      - apt-get install picard-tools
+
+curl            - apt-get install curl
+samtools        - apt-get install samtools
+picard-tools    - apt-get install picard-tools
 Active Internet Connection (Boto)
 """
 
@@ -82,7 +86,8 @@ def build_parser():
 
 
 def start_node(target, gatk):
-    """Create .dict/.fai for reference and start children/follow-on
+    """
+    Create .dict/.fai for reference and start children/follow-on
     samtools faidx reference
     picard CreateSequenceDictionary R=reference O=output
     """
@@ -112,52 +117,96 @@ def start_node(target, gatk):
     gatk.upload_to_S3(reference + '.dict')
 
     # Spawn children and follow-on
-    #target.addChildTargetFn()
-    #target.addChildTargetFn()
-    #target.addFollowOnTargetFn()
+    target.addChildTargetFn()
+    target.addChildTargetFn()
+    target.addFollowOnTargetFn()
 
 
-def normal_index(target, pair_dir, inputs, intermediates):
+def normal_index(target, gatk):
+    """
+    Create .bai file for normal.bam.
+    samtools index normal.bam
+    """
+
+    # Retrieve normal.bam filepath
+    normal = gatk.get_input_path('normal.bam')
+
+    # Create index file for normal.bam (.bai)
+    try:
+        subprocess.check_call(['samtools', 'index', normal])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('samtools failed to index BAM')
+    except OSError:
+        raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
+
+    # Upload to S3
+    gatk.upload_to_S3(normal + '.bai')
+
+    # Spawn child
+    target.addChildTarget(normal_rtc, (gatk,))
+
+
+def tumor_index(target, gatk):
+    """
+    Create .bai file for tumor.bam.
+    samtools index tumor.bam
+    """
+
+    # Retrieve normal.bam filepath
+    tumor = gatk.get_input_path('tumor.bam')
+
+    # Create index file for normal.bam (.bai)
+    try:
+        subprocess.check_call(['samtools', 'index', tumor])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('samtools failed to index BAM')
+    except OSError:
+        raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
+
+    # Upload to S3
+    gatk.upload_to_S3(tumor + '.bai')
+
+    # Spawn child
+    target.addChildTarget(tumor_rtc, (gatk,))
+
+
+
+def normal_rtc(target, gatk):
     pass
 
 
-def tumor_index(target, pair_dir, inputs, intermediates):
+def tumor_rtc(target, gatk):
     pass
 
 
-def normal_rtc(target, pair_dir, inputs, intermediates):
+def normal_ir(target, gatk):
     pass
 
 
-def tumor_rtc(target, pair_dir, inputs, intermediates):
+def tumor_ir(target, gatk):
     pass
 
 
-def normal_ir(target, pair_dir, inputs, intermediates):
+def normal_br(target, gatk):
     pass
 
 
-def tumor_ir(target, pair_dir, inputs, intermediates):
+def tumor_br(target, gatk):
     pass
 
 
-def normal_br(target, pair_dir, inputs, intermediates):
+def normal_pr(target, gatk):
     pass
 
 
-def tumor_br(target, pair_dir, inputs, intermediates):
+def tumor_pr(target, gatk):
     pass
 
 
-def normal_pr(target, pair_dir, inputs, intermediates):
+def mutect(target, gatk):
     pass
 
-
-def tumor_pr(target, pair_dir, inputs, intermediates):
-    pass
-
-
-def mutect(target, pair_dir, inputs, intermediates):
+def teardown(target, gatk):
     pass
 
 
@@ -320,3 +369,12 @@ if __name__ == "__main__":
     # from JobTree.jt_GATK import *
     main()
 
+# Copy / Pasta
+'''
+try:
+    subprocess.check_call([])
+except subprocess.CalledProcessError:
+    raise RuntimeError('')
+except OSError:
+    raise RuntimeError('Failed to find "java"')
+'''
