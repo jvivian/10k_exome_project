@@ -168,10 +168,9 @@ class SupportGATK(object):
 
     def __init__(self, input_URLs, local_dir, shared_dir, pair_dir):
         self.input_URLs = input_URLs
+        self.local_dir = local_dir
         self.shared_dir = shared_dir
         self.pair_dir = pair_dir
-        self.local_dir = local_dir
-
 
     def get_input_path(self, name):
         """
@@ -215,7 +214,7 @@ class SupportGATK(object):
                 conn = boto.connect_s3()
                 bucket = conn.get_bucket(bucket_name)
                 k = Key(bucket)
-                k.name = file_path
+                k.name = file_path[len(self.local_dir):].strip('//')
             except:
                 raise RuntimeError('Could not connect to S3 and retrieve bucket: {}'.format(bucket_name))
 
@@ -250,11 +249,9 @@ class SupportGATK(object):
         k = Key(bucket)
         if not os.path.exists(file_path):
             raise RuntimeError('File at path: {}, does not exist'.format(file_path))
-        if '.fai' in file_path or '.dict' in file_path:
-            k.name = os.path.join(self.pair_dir.split(os.sep)[-2], os.path.split(file_path)[1])
-        else:
-            k.name = os.path.join(self.pair_dir.split(os.sep)[-2],
-                                  self.pair_dir.split(os.sep)[-1], os.path.split(file_path)[1])
+
+        # Derive the virtual folder and path for S3
+        k.name = file_path[len(self.local_dir):].strip('//')
 
         # Upload to S3
         try:
@@ -262,7 +259,8 @@ class SupportGATK(object):
         except:
             raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file_path))
 
-    def mkdir_p(self, path):
+    @staticmethod
+    def mkdir_p(path):
         """
         The equivalent of mkdir -p
         https://github.com/BD2KGenomics/bd2k-python-lib/blob/master/src/bd2k/util/files.py
@@ -274,6 +272,7 @@ class SupportGATK(object):
                 pass
             else:
                 raise
+
 
 def main():
     # Define global variable: local_dir
@@ -321,53 +320,3 @@ if __name__ == "__main__":
     # from JobTree.jt_GATK import *
     main()
 
-
-# Potentially defunct functions/methods live here. Delete when possible.
-'''
-def download_inputs(pair_dir, inputs, *arg):
-    """
-    Checks for files (provided in *arg) and downloads them if not present.
-    *arg are key_names from the inputs dict that are needed for that tool.
-
-    :param pair_dir: str
-    :param inputs: dict
-    :param arg: str
-    """
-
-    shared_dir = get_shared_dir(pair_dir)
-
-    # Create necessary directories if not present
-    local_dir = os.path.split(shared_dir)[0]
-    if not os.path.exists(local_dir):
-        os.mkdir(local_dir)
-    if not os.path.exists(shared_dir):
-        os.mkdir(shared_dir)
-    if not os.path.exists(pair_dir):
-        os.mkdir(pair_dir)
-
-    # Acquire necessary inputs if not present, return file_names as a dict.
-    for input in arg:
-        file_name = get_filenames(inputs, input)[input]
-        if input == 'normal' or input == 'tumor':
-            path = pair_dir
-        else:
-            path = shared_dir
-        if not os.path.exists(os.path.join(path, file_name)):
-            try:
-                subprocess.check_call(['wget', '-P', path, inputs[input]])
-            except subprocess.CalledProcessError:
-                raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL'.format(file_name))
-            except OSError:
-                raise RuntimeError('\nFailed to find "wget".\nInstall via "apt-get install wget".')
-
-
-def get_filenames(inputs, *arg):
-    filenames = {}
-    for input in arg:
-        filenames[input] = inputs[input].split('/')[-1]
-    return filenames
-
-
-def get_shared_dir(self):
-        return os.path.split(self.pair_dir)[0]
-'''
