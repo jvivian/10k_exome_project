@@ -95,7 +95,7 @@ def start_node(target, gatk):
     except subprocess.CalledProcessError:
         raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
-        raise RuntimeError('\nFailed to find "samtools". \n Install via "apt-get install samtools".')
+        raise RuntimeError('\nFailed to find "samtools". \nInstall via "apt-get install samtools".')
 
     # Create dict file for reference genome (.dict)
     try:
@@ -105,16 +105,16 @@ def start_node(target, gatk):
     except subprocess.CalledProcessError:
         raise RuntimeError('\nPicard failed to create reference dictionary')
     except OSError:
-        raise RuntimeError('\nFailed to find "picard". \n Install via "apt-get install picard-tools')
+        raise RuntimeError('\nFailed to find "picard". \nInstall via "apt-get install picard-tools')
 
     # upload to S3
-    gatk.upload_to_S3()
-    gatk.upload_to_S3()
+    gatk.upload_to_S3(reference + '.fai')
+    gatk.upload_to_S3(reference + '.dict')
 
     # Spawn children and follow-on
-    target.addChildTargetFn()
-    target.addChildTargetFn()
-    target.addFollowOnTargetFn()
+    #target.addChildTargetFn()
+    #target.addChildTargetFn()
+    #target.addFollowOnTargetFn()
 
 
 def normal_index(target, pair_dir, inputs, intermediates):
