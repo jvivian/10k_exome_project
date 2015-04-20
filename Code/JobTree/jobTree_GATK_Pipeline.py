@@ -306,8 +306,8 @@ def main():
 
     # Create directories for shared files and for isolating pairs
     shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0], str(uuid.uuid4()))
-    pair_dir = os.path.join(shared_dir, input_URLs['normal'].split('/')[-1].split('.')[0] +
-                            '-normal:' + input_URLs['tumor'].split('/')[-1].split('.')[0] + '-tumor')
+    pair_dir = os.path.join(shared_dir, input_URLs['normal.bam'].split('/')[-1].split('.')[0] +
+                            '-normal:' + input_URLs['tumor.bam'].split('/')[-1].split('.')[0] + '-tumor')
 
     # Create SupportGATK instance
     gatk = SupportGATK(input_URLs, local_dir, shared_dir, pair_dir)
