@@ -45,15 +45,36 @@ class TestSupportGATK(unittest.TestCase):
         except:
             raise RuntimeError('Connection to S3 failed')
 
-        self.assertTrue( '{}/test.vcf'.format(self.UUID) in [x.name for x in keys])
-        self.assertTrue( '{}/pair/normal.bam'.format(self.UUID) in [x.name for x in keys])
+        self.assertTrue('{}/test.vcf'.format(self.UUID) in [x.name for x in keys])
+        self.assertTrue('{}/pair/normal.bam'.format(self.UUID) in [x.name for x in keys])
 
-    def test_
+    def test_GetIntermediatePath(self):
+
+        # Download temp files
+        file1 = os.path.join(self.shared_dir, 'test.fai')
+        file2 = os.path.join(self.pair_dir, 'test.intervals')
+
+        subprocess.check_call(['curl', '-fs', 'www.google.com', '-o', file1])
+        subprocess.check_call(['curl', '-fs', 'www.google.com', '-o', file2])
+
+        # Run test_UploadToS3 first to make sure this works -- Upload to S3
+        self.gatk.upload_to_S3(file1)
+        self.gatk.upload_to_S3(file2)
+
+        # Remove files from local path -- we want GetIntermediatePath to fetch them from S3
+        subprocess.check_call(['rm', file1])
+        subprocess.check_call(['rm', file2])
+
+        # Retrieve file path (forcing retrieval from S3)
+        fai_path = self.gatk.get_intermediate_path('test.fai')
+        intervals_path = self.gatk.get_intermediate_path('test.intervals')
+
+        self.assertEqual(fai_path, file1)
+        self.assertEqual(intervals_path, file2)
 
     @classmethod
     def tearDownClass(self):
         # Check with Hannes about 'proper' way to do this
-        # Delete test_out folder
         subprocess.check_call(['rm', '-r', 'test_out/{}/'.format(self.UUID)])
 
         # Delete generated S3 keys
@@ -68,11 +89,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-'''
-class UploadToS3Test(unittest.TestCase):
-
-    def test(self):
-
-
-'''
