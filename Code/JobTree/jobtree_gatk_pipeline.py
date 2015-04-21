@@ -229,7 +229,7 @@ def tumor_rtc(target, gatk):
     gatk.upload_to_s3(output)
 
     # Spawn Child
-    target.addChildTargetFn(normal_ir, (gatk,))
+    target.addChildTargetFn(tumor_ir, (gatk,))
 
 
 def normal_ir(target, gatk):
@@ -303,7 +303,7 @@ def tumor_ir(target, gatk):
     gatk.upload_to_s3(output + '.bai')
 
     # Spawn Child
-    target.addChildTargetFn(normal_br, (gatk,))
+    target.addChildTargetFn(tumor_br, (gatk,))
 
 
 def normal_br(target, gatk):
@@ -369,7 +369,7 @@ def tumor_br(target, gatk):
     gatk.upload_to_s3(output)
 
     # Spawn Child
-    target.addChildTargetFn(normal_pr, (gatk,))
+    target.addChildTargetFn(tumor_pr, (gatk,))
 
 
 def normal_pr(target, gatk):
