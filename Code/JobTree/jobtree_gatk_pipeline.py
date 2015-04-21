@@ -117,7 +117,7 @@ def start_node(target, gatk):
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
     target.addChildTargetFn(tumor_index, (gatk,))
-    target.addFollowOnTargetFn(mutect, (gatk,))
+    target.setFollowOnTargetFn(mutect, (gatk,))
 
 
 def normal_index(target, gatk):
