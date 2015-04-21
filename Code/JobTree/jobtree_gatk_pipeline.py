@@ -55,6 +55,7 @@ Active Internet Connection (Boto)
 
 import argparse
 import errno
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -71,7 +72,6 @@ from jobTree.scriptTree.target import Target
 def build_parser():
     """
     Contains arguments for the all of necessary input files
-    :return:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--reference', required=True, help="Reference Genome URL")
@@ -117,9 +117,9 @@ def start_node(target, gatk):
     gatk.upload_to_S3(reference + '.dict')
 
     # Spawn children and follow-on
-    target.addChildTargetFn()
-    target.addChildTargetFn()
-    target.addFollowOnTargetFn()
+    target.addChildTargetFn(normal_index, (gatk,))
+    target.addChildTargetFn(tumor_index, (gatk,))
+    #target.addFollowOnTargetFn(mutect, (gatk,))
 
 
 def normal_index(target, gatk):
@@ -143,7 +143,7 @@ def normal_index(target, gatk):
     gatk.upload_to_S3(normal + '.bai')
 
     # Spawn child
-    target.addChildTarget(normal_rtc, (gatk,))
+    target.addChildTargetFn(normal_rtc, (gatk,))
 
 
 def tumor_index(target, gatk):
@@ -167,52 +167,206 @@ def tumor_index(target, gatk):
     gatk.upload_to_S3(tumor + '.bai')
 
     # Spawn child
-    target.addChildTarget(tumor_rtc, (gatk,))
-
+    target.addChildTargetFn(tumor_rtc, (gatk,))
 
 
 def normal_rtc(target, gatk):
-    pass
+    """
+    Create intervals file
+    java -Xmx15g -jar GenomeAnalysisTK.jar \
+    -T RealignerTargetCreator \
+    -nt 4 \
+    -R ${DATA}/genome.fa \
+    -I ${DATA}/${NORMAL} \
+    -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
+    -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
+    --downsampling_type NONE \
+    -o ${DATA}/output.normal.intervals
+    """
+
+    # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+    normal = gatk.get_input_path('normal.bam')
+    normal_bai = gatk.get_input_path('normal.bam.bai')
+    phase = gatk.get_input_path('phase.vcf')
+    mills = gatk.get_input_path('mills.vcf')
+
+    # Output File
+    output = os.path.join(gatk.pair_dir, 'normal.intervals')
+
+    # Create interval file
+    try:
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'RealignerTargetCreator',
+                               '-nt', gatk.cpu_count, '-R', ref, '-I', normal, '-known', phase,
+                               '-known', mills, '--downsampling_type NONE', '-o', output])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('RealignerTargetCreator failed to finish')
+    except OSError:
+        raise RuntimeError('Failed to find "java" or gatk_jar')
+    # Upload to S3
+    gatk.upload_to_S3(output)
+
+    # Spawn Child
+    target.addChildTargetFn(normal_ir, (gatk,))
 
 
 def tumor_rtc(target, gatk):
-    pass
+
+    # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+    tumor = gatk.get_input_path('tumor.bam')
+    tumor_bai = gatk.get_input_path('tumor.bam.bai')
+    phase = gatk.get_input_path('phase.vcf')
+    mills = gatk.get_input_path('mills.vcf')
+
+    # Output File
+    output = os.path.join(gatk.pair_dir, 'tumor.intervals')
+
+    # Create interval file
+    try:
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'RealignerTargetCreator',
+                               '-nt', gatk.cpu_count, '-R', ref, '-I', tumor, '-known', phase,
+                               '-known', mills, '--downsampling_type NONE', '-o', output])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('RealignerTargetCreator failed to finish')
+    except OSError:
+        raise RuntimeError('Failed to find "java" or gatk_jar')
+    # Upload to S3
+    gatk.upload_to_S3(output)
+
+    # Spawn Child
+    target.addChildTargetFn(normal_ir, (gatk,))
 
 
 def normal_ir(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 def tumor_ir(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 def normal_br(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 def tumor_br(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 def normal_pr(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 def tumor_pr(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 def mutect(target, gatk):
-    pass
+    # Retrieve input files
+
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
+
 
 def teardown(target, gatk):
-    pass
+    # Retrieve input files
 
+    # Create interval file
+    try:
+        subprocess.check_call([])
+    except subprocess.CalledProcessError:
+        raise RuntimeError('')
+    except OSError:
+        raise RuntimeError('Failed to find "java"')
+    # Upload to S3
+
+    # Spawn Child
 
 
 class SupportGATK(object):
-    """ Class to encapsulate all necessary data structures and methods used in the pipeline.
+    """
+    Class to encapsulate all necessary data structures and methods used in the pipeline.
     """
 
     def __init__(self, input_URLs, local_dir, shared_dir, pair_dir):
@@ -220,6 +374,7 @@ class SupportGATK(object):
         self.local_dir = local_dir
         self.shared_dir = shared_dir
         self.pair_dir = pair_dir
+        self.cpu_count = multiprocessing.cpu_count()
 
     def get_input_path(self, name):
         """
