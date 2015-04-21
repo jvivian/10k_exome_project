@@ -178,12 +178,13 @@ def normal_rtc(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
-    normal = gatk.get_input_path('normal.bam')
-    normal_bai = gatk.get_input_path('normal.bam.bai')
     phase = gatk.get_input_path('phase.vcf')
     mills = gatk.get_input_path('mills.vcf')
+    normal = gatk.get_input_path('normal.bam')
+
+    ref_fai = gatk.get_intermediate_path('reference.fasta.fai')
+    ref_dict = gatk.get_intermediate_path('reference.fasta.dict')
+    normal_bai = gatk.get_intermediate_path('normal.bam.bai')
 
     # Output File
     output = os.path.join(gatk.pair_dir, 'normal.intervals')
@@ -211,12 +212,13 @@ def tumor_rtc(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
-    tumor = gatk.get_input_path('tumor.bam')
-    tumor_bai = gatk.get_input_path('tumor.bam.bai')
     phase = gatk.get_input_path('phase.vcf')
     mills = gatk.get_input_path('mills.vcf')
+    tumor = gatk.get_input_path('tumor.bam')
+
+    ref_fai = gatk.get_intermediate_path('reference.fasta.fai')
+    ref_dict = gatk.get_intermediate_path('reference.fasta.dict')
+    tumor_bai = gatk.get_intermediate_path('tumor.bam.bai')
 
     # Output File
     output = os.path.join(gatk.pair_dir, 'tumor.intervals')
