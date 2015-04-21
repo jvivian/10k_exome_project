@@ -272,6 +272,7 @@ def normal_ir(target, gatk):
     # Spawn Child
     target.addChildTargetFn(normal_br, (gatk,))
 
+
 def tumor_ir(target, gatk):
     """
     Creates realigned tumor bams
@@ -340,6 +341,7 @@ def normal_br(target, gatk):
     # Spawn Child
     target.addChildTargetFn(normal_pr, (gatk,))
 
+
 def tumor_br(target, gatk):
     """
     Creates tumor recal table
@@ -371,34 +373,69 @@ def tumor_br(target, gatk):
     # Spawn Child
     target.addChildTargetFn(normal_pr, (gatk,))
 
+
 def normal_pr(target, gatk):
+    """
+    Create normal.bqsr.bam
+    """
     # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+
+    normal_indel = gatk.get_intermediate_path('normal.indel.bam')
+    normal_bai = gatk.get_intermediate_path('normal.indel.bam.bai')
+    normal_recal = gatk.get_input_path('normal.recal.table')
+
+    # Output file
+    output = os.path.join(gatk.pair_dir, 'normal.bqsr.bam')
 
     # Create interval file
     try:
-        subprocess.check_call([])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'PrintReads',
+                               '-nct', gatk.cpu_count, '-R', ref, '--emit_original_quals',
+                               '-I', normal_indel, '-BQSR', normal_recal, '-o', output])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('PrintReads failed to finish')
     except OSError:
-        raise RuntimeError('Failed to find "java"')
-    # Upload to S3
+        raise RuntimeError('Failed to find "java" or gatk_jar')
 
-    # Spawn Child
+    # Upload to S3
+    gatk.upload_to_S3(output)
+    gatk.upload_to_S3(output + '.bai')
 
 
 def tumor_pr(target, gatk):
+    """
+    Create tumor.bqsr.bam
+    """
     # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+
+    tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
+    tuor_bai = gatk.get_intermediate_path('tumor.indel.bam.bai')
+    tumor_recal = gatk.get_input_path('tumor.recal.table')
+
+    # Output file
+    output = os.path.join(gatk.pair_dir, 'tumor.bqsr.bam')
 
     # Create interval file
     try:
-        subprocess.check_call([])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'PrintReads',
+                               '-nct', gatk.cpu_count, '-R', ref, '--emit_original_quals',
+                               '-I', tumor_indel, '-BQSR', tumor_recal, '-o', output])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('PrintReads failed to finish')
     except OSError:
-        raise RuntimeError('Failed to find "java"')
-    # Upload to S3
+        raise RuntimeError('Failed to find "java" or gatk_jar')
 
-    # Spawn Child
+    # Upload to S3
+    gatk.upload_to_S3(output)
+    gatk.upload_to_S3(output + '.bai')
 
 
 def mutect(target, gatk):
