@@ -465,8 +465,8 @@ def mutect(target, gatk):
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', mutect_jar, '--analysis_type', 'MuTect',
                                '--reference_sequence', ref, '--cosmic', cosmic, '--tumor_lod', str(10),
-                               '--dbsnp', dbsnp, 'input_file:normal', normal_bqsr,
-                               'input_file:tumor', tumor_bqsr, '--out', mut_out,
+                               '--dbsnp', dbsnp, '--input_file:normal', normal_bqsr,
+                               '--input_file:tumor', tumor_bqsr, '--out', mut_out,
                                '--coverage_file', mut_cov, '--vcf', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('Mutect failed to finish')
