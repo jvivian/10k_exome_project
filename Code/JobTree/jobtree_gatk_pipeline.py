@@ -172,18 +172,8 @@ def tumor_index(target, gatk):
 
 def normal_rtc(target, gatk):
     """
-    Create intervals file
-    java -Xmx15g -jar GenomeAnalysisTK.jar \
-    -T RealignerTargetCreator \
-    -nt 4 \
-    -R ${DATA}/genome.fa \
-    -I ${DATA}/${NORMAL} \
-    -known ${DATA}/1000G_phase1.indels.hg19.sites.fixed.vcf \
-    -known ${DATA}/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf \
-    --downsampling_type NONE \
-    -o ${DATA}/output.normal.intervals
+    Creates normal.intervals file
     """
-
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
@@ -201,7 +191,7 @@ def normal_rtc(target, gatk):
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'RealignerTargetCreator',
                                '-nt', gatk.cpu_count, '-R', ref, '-I', normal, '-known', phase,
-                               '-known', mills, '--downsampling_type NONE', '-o', output])
+                               '-known', mills, '--downsampling_type', 'NONE', '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('RealignerTargetCreator failed to finish')
     except OSError:
@@ -214,7 +204,9 @@ def normal_rtc(target, gatk):
 
 
 def tumor_rtc(target, gatk):
-
+    """
+    Creates tumor.intervals file
+    """
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
@@ -232,7 +224,7 @@ def tumor_rtc(target, gatk):
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'RealignerTargetCreator',
                                '-nt', gatk.cpu_count, '-R', ref, '-I', tumor, '-known', phase,
-                               '-known', mills, '--downsampling_type NONE', '-o', output])
+                               '-known', mills, '--downsampling_type', 'NONE', '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('RealignerTargetCreator failed to finish')
     except OSError:
@@ -245,64 +237,139 @@ def tumor_rtc(target, gatk):
 
 
 def normal_ir(target, gatk):
+    """
+    Creates realigned normal bams
+    """
     # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+    normal = gatk.get_input_path('normal.bam')
+    normal_bai = gatk.get_input_path('normal.bam.bai')
+    phase = gatk.get_input_path('phase.vcf')
+    mills = gatk.get_input_path('mills.vcf')
+
+    normal_intervals = gatk.get_intermediate_path('normal.intervals')
+
+    # Output file
+    output = os.path.join(gatk.pair_dir, 'normal.indel.bam')
 
     # Create interval file
     try:
-        subprocess.check_call([])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
+                               '-R', ref, '-I', normal, '-known', phase, '-known', mills,
+                               '-targetIntervals', normal_intervals, '--downsampling_type', 'NONE',
+                               'maxReads', 720000, '-maxInMemory', 5400000, '-o', output])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
-        raise RuntimeError('Failed to find "java"')
+        raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
+    gatk.upload_to_S3(output)
+    gatk.upload_to_S3(output + '.bai')
 
     # Spawn Child
-
+    target.addChildTargetFn(normal_br, (gatk,))
 
 def tumor_ir(target, gatk):
+    """
+    Creates realigned tumor bams
+    """
     # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+    tumor = gatk.get_input_path('tumor.bam')
+    tumor_bai = gatk.get_input_path('tumor.bam.bai')
+    phase = gatk.get_input_path('phase.vcf')
+    mills = gatk.get_input_path('mills.vcf')
+
+    tumor_intervals = gatk.get_intermediate_path('tumor.intervals')
+
+    # Output file
+    output = os.path.join(gatk.pair_dir, 'tumor.indel.bam')
 
     # Create interval file
     try:
-        subprocess.check_call([])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
+                               '-R', ref, '-I', tumor, '-known', phase, '-known', mills,
+                               '-targetIntervals', tumor_intervals, '--downsampling_type', 'NONE',
+                               'maxReads', 720000, '-maxInMemory', 5400000, '-o', output])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
-        raise RuntimeError('Failed to find "java"')
+        raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
+    gatk.upload_to_S3(output)
+    gatk.upload_to_S3(output + '.bai')
 
     # Spawn Child
+    target.addChildTargetFn(normal_br, (gatk,))
 
 
 def normal_br(target, gatk):
+    """
+    Creates normal recal table
+    """
     # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+    dbsnp = gatk.get_input_path('dbsnp.vcf')
+
+    normal_indel = gatk.get_intermediate_path('normal.indel.bam')
+    normal_bai = gatk.get_intermediate_path('normal.indel.bam.bai')
+
+    # Output file
+    output = os.path.join(gatk.pair_dir, 'normal.recal.table')
 
     # Create interval file
     try:
-        subprocess.check_call([])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator', '-nct', gatk.cpu_count,
+                           '-R', ref, '-I', normal_indel, '-knownSites', dbsnp, '-o', output])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
-        raise RuntimeError('Failed to find "java"')
+        raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
+    gatk.upload_to_S3(output)
 
     # Spawn Child
-
+    target.addChildTargetFn(normal_pr, (gatk,))
 
 def tumor_br(target, gatk):
+    """
+    Creates tumor recal table
+    """
     # Retrieve input files
+    gatk_jar = gatk.get_input_path('gatk.jar')
+    ref = gatk.get_input_path('reference.fasta')
+    ref_fai = gatk.get_input_path('reference.fasta.fai')
+    ref_dict = gatk.get_input_path('reference.fasta.dict')
+    dbsnp = gatk.get_input_path('dbsnp.vcf')
+
+    tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
+    tumor_bai = gatk.get_intermediate_path('tumor.indel.bam.bai')
+
+    # Output file
+    output = os.path.join(gatk.pair_dir, 'tumor.recal.table')
 
     # Create interval file
     try:
-        subprocess.check_call([])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator', '-nct', gatk.cpu_count,
+                           '-R', ref, '-I', tumor_indel, '-knownSites', dbsnp, '-o', output])
     except subprocess.CalledProcessError:
-        raise RuntimeError('')
+        raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
-        raise RuntimeError('Failed to find "java"')
+        raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
+    gatk.upload_to_S3(output)
 
     # Spawn Child
-
+    target.addChildTargetFn(normal_pr, (gatk,))
 
 def normal_pr(target, gatk):
     # Retrieve input files
@@ -505,7 +572,7 @@ def main():
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
         if input == 'normal' or input == 'tumor':
             if len(input_URLs[input].split('/')[-1].split('.')) != 3:
-                raise RuntimeError('{} Bam, is not in the appropriate format: \
+                raise RuntimeError('{} BAM is not in the appropriate format: \
                 UUID.normal.bam or UUID.tumor.bam'.format(input))
 
     # Create directories for shared files and for isolating pairs
@@ -523,13 +590,3 @@ def main():
 if __name__ == "__main__":
     # from JobTree.jt_GATK import *
     main()
-
-# Copy / Pasta
-'''
-try:
-    subprocess.check_call([])
-except subprocess.CalledProcessError:
-    raise RuntimeError('')
-except OSError:
-    raise RuntimeError('Failed to find "java"')
-'''
