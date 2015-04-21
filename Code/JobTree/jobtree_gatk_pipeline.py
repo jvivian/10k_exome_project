@@ -26,19 +26,19 @@ Tree Structure of GATK Pipeline
 12 = teardown / cleanup
 
 1-10, and 12 are "Target children"
-11 is a "Target follow-fn", it is executed after completion of children.
+11 is a "Target follow-on", it is executed after completion of children.
 
 =========================================================================
 :Directory Structure:
 
-local_dir = /mnt/jobtree
+local_dir = /mnt/
 
-shared input files go in:
-    <local_dir>/<script_name>/<UUID4>
+# For "shared" input files
+shared_dir = <local_dir>/<script_name>/<UUID4>
 
-BAMS go in:
-    <local_dir>/<script_name>/<UUID4>/<pair>/
-<pair> is defined as UUID-normal:UUID-tumor
+# For files specific to a tumor/normal pair
+pair_dir = <local_dir>/<script_name>/<UUID4>/<pair>/
+    <pair> is defined as UUID-normal:UUID-tumor
 
 files are uploaded to:
     s3://bd2k-<script>/<UUID4>/ if shared (.fai/.dict)
@@ -256,7 +256,7 @@ def normal_ir(target, gatk):
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
                                '-R', ref, '-I', normal, '-known', phase, '-known', mills,
                                '-targetIntervals', normal_intervals, '--downsampling_type', 'NONE',
-                               'maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
+                               '-maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
@@ -293,7 +293,7 @@ def tumor_ir(target, gatk):
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
                                '-R', ref, '-I', tumor, '-known', phase, '-known', mills,
                                '-targetIntervals', tumor_intervals, '--downsampling_type', 'NONE',
-                               'maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
+                               '-maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
