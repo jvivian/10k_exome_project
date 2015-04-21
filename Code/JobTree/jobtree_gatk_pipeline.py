@@ -316,7 +316,7 @@ def normal_br(target, gatk):
     dbsnp = gatk.get_input_path('dbsnp.vcf')
 
     normal_indel = gatk.get_intermediate_path('normal.indel.bam')
-    gatk.get_intermediate_path('normal.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('normal.indel.bai', return_path=False)
     gatk.get_intermediate_path('reference.fasta.fai', False)
     gatk.get_intermediate_path('reference.dict', False)
 
@@ -349,7 +349,7 @@ def tumor_br(target, gatk):
     dbsnp = gatk.get_input_path('dbsnp.vcf')
 
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
-    gatk.get_intermediate_path('tumor.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
     gatk.get_input_path('reference.fasta.fai', False)
     gatk.get_input_path('reference.dict', False)
 
@@ -382,7 +382,7 @@ def normal_pr(target, gatk):
 
     normal_indel = gatk.get_intermediate_path('normal.indel.bam')
     normal_recal = gatk.get_intermediate_path('normal.recal.table')
-    gatk.get_intermediate_path('normal.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('normal.indel.bai', return_path=False)
     gatk.get_intermediate_path('reference.fasta.fai', False)
     gatk.get_intermediate_path('reference.dict', False)
 
@@ -414,7 +414,7 @@ def tumor_pr(target, gatk):
 
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
     tumor_recal = gatk.get_intermediate_path('tumor.recal.table')
-    gatk.get_intermediate_path('tumor.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
     gatk.get_intermediate_path('reference.fasta.fai', False)
     gatk.get_intermediate_path('reference.dict', False)
 
@@ -448,8 +448,8 @@ def mutect(target, gatk):
 
     normal_bqsr = gatk.get_intermediate_path('normal.bqsr.bam')
     tumor_bqsr = gatk.get_intermediate_path('tumor.bqsr.bam')
-    gatk.get_intermediate_path('normal.bqsr.bam.bai', return_path=False)
-    gatk.get_intermediate_path('tumor.bqsr.bam.bai', False)
+    gatk.get_intermediate_path('normal.bqsr.bai', return_path=False)
+    gatk.get_intermediate_path('tumor.bqsr.bai', False)
     gatk.get_intermediate_path('reference.fasta.fai', False)
     gatk.get_intermediate_path('reference.dict', False)
 
