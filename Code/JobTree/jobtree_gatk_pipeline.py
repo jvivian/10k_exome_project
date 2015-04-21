@@ -89,10 +89,7 @@ def build_parser():
 def start_node(target, gatk):
     """
     Create .dict/.fai for reference and start children/follow-on
-    samtools faidx reference
-    picard CreateSequenceDictionary R=reference O=output
     """
-
     reference = gatk.get_input_path('reference.fasta')
 
     # Create index file for reference genome (.fai)
@@ -107,15 +104,15 @@ def start_node(target, gatk):
     try:
         subprocess.check_call(['picard-tools', 'CreateSequenceDictionary',
                                'R={}'.format(reference),
-                               'O={}.dict'.format(reference.split('.')[0])])
+                               'O={}.dict'.format(os.path.splitext(reference)[0])])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nPicard failed to create reference dictionary')
     except OSError:
         raise RuntimeError('\nFailed to find "picard". \nInstall via "apt-get install picard-tools')
 
     # upload to S3
-    gatk.upload_to_S3(reference + '.fai')
-    gatk.upload_to_S3(reference.split('.')[0] + '.dict')
+    gatk.upload_to_s3(reference + '.fai')
+    gatk.upload_to_s3(os.path.splitext(reference)[0] + '.dict')
 
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
@@ -125,11 +122,9 @@ def start_node(target, gatk):
 
 def normal_index(target, gatk):
     """
-    Create .bai file for normal.bam.
-    samtools index normal.bam
+    Create .bai file for normal.bam
     """
-
-    # Retrieve normal.bam filepath
+    # Retrieve input bam
     normal = gatk.get_input_path('normal.bam')
 
     # Create index file for normal.bam (.bai)
@@ -141,7 +136,7 @@ def normal_index(target, gatk):
         raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
 
     # Upload to S3
-    gatk.upload_to_S3(normal + '.bai')
+    gatk.upload_to_s3(normal + '.bai')
 
     # Spawn child
     target.addChildTargetFn(normal_rtc, (gatk,))
@@ -149,11 +144,9 @@ def normal_index(target, gatk):
 
 def tumor_index(target, gatk):
     """
-    Create .bai file for tumor.bam.
-    samtools index tumor.bam
+    Create .bai file for tumor.bam
     """
-
-    # Retrieve normal.bam filepath
+    # Retrieve input bam
     tumor = gatk.get_input_path('tumor.bam')
 
     # Create index file for normal.bam (.bai)
@@ -165,7 +158,7 @@ def tumor_index(target, gatk):
         raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
 
     # Upload to S3
-    gatk.upload_to_S3(tumor + '.bai')
+    gatk.upload_to_s3(tumor + '.bai')
 
     # Spawn child
     target.addChildTargetFn(tumor_rtc, (gatk,))
@@ -182,9 +175,9 @@ def normal_rtc(target, gatk):
     mills = gatk.get_input_path('mills.vcf')
     normal = gatk.get_input_path('normal.bam')
 
-    ref_fai = gatk.get_intermediate_path('reference.fasta.fai')
-    ref_dict = gatk.get_intermediate_path('reference.dict')
-    normal_bai = gatk.get_intermediate_path('normal.bam.bai')
+    gatk.get_intermediate_path('reference.fasta.fai', return_path=False)
+    gatk.get_intermediate_path('reference.dict', False)
+    gatk.get_intermediate_path('normal.bam.bai', False)
 
     # Output File
     output = os.path.join(gatk.pair_dir, 'normal.intervals')
@@ -199,7 +192,7 @@ def normal_rtc(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
+    gatk.upload_to_s3(output)
 
     # Spawn Child
     #target.addChildTargetFn(normal_ir, (gatk,))
@@ -216,9 +209,9 @@ def tumor_rtc(target, gatk):
     mills = gatk.get_input_path('mills.vcf')
     tumor = gatk.get_input_path('tumor.bam')
 
-    ref_fai = gatk.get_intermediate_path('reference.fasta.fai')
-    ref_dict = gatk.get_intermediate_path('reference.dict')
-    tumor_bai = gatk.get_intermediate_path('tumor.bam.bai')
+    gatk.get_intermediate_path('reference.fasta.fai', return_path=False)
+    gatk.get_intermediate_path('reference.dict', False)
+    gatk.get_intermediate_path('tumor.bam.bai', False)
 
     # Output File
     output = os.path.join(gatk.pair_dir, 'tumor.intervals')
@@ -233,7 +226,7 @@ def tumor_rtc(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
+    gatk.upload_to_s3(output)
 
     # Spawn Child
     #target.addChildTargetFn(normal_ir, (gatk,))
@@ -246,14 +239,14 @@ def normal_ir(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
     normal = gatk.get_input_path('normal.bam')
-    normal_bai = gatk.get_input_path('normal.bam.bai')
     phase = gatk.get_input_path('phase.vcf')
     mills = gatk.get_input_path('mills.vcf')
 
     normal_intervals = gatk.get_intermediate_path('normal.intervals')
+    gatk.get_intermediate_path('reference.fasta.fai', return_path=False)
+    gatk.get_intermediate_path('reference.dict', False)
+    gatk.get_intermediate_path('normal.bam.bai', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'normal.indel.bam')
@@ -269,8 +262,8 @@ def normal_ir(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
-    gatk.upload_to_S3(output + '.bai')
+    gatk.upload_to_s3(output)
+    gatk.upload_to_s3(output + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(normal_br, (gatk,))
@@ -283,14 +276,14 @@ def tumor_ir(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
     tumor = gatk.get_input_path('tumor.bam')
-    tumor_bai = gatk.get_input_path('tumor.bam.bai')
     phase = gatk.get_input_path('phase.vcf')
     mills = gatk.get_input_path('mills.vcf')
 
     tumor_intervals = gatk.get_intermediate_path('tumor.intervals')
+    gatk.get_intermediate_path('reference.fasta.fai', return_path=False)
+    gatk.get_intermediate_path('reference.dict', False)
+    gatk.get_intermediate_path('normal.bam.bai', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'tumor.indel.bam')
@@ -306,8 +299,8 @@ def tumor_ir(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
-    gatk.upload_to_S3(output + '.bai')
+    gatk.upload_to_s3(output)
+    gatk.upload_to_s3(output + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(normal_br, (gatk,))
@@ -320,12 +313,12 @@ def normal_br(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
     dbsnp = gatk.get_input_path('dbsnp.vcf')
 
     normal_indel = gatk.get_intermediate_path('normal.indel.bam')
-    normal_bai = gatk.get_intermediate_path('normal.indel.bam.bai')
+    gatk.get_intermediate_path('normal.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('reference.fasta.fai', False)
+    gatk.get_intermediate_path('reference.dict', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'normal.recal.table')
@@ -340,7 +333,7 @@ def normal_br(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
+    gatk.upload_to_s3(output)
 
     # Spawn Child
     target.addChildTargetFn(normal_pr, (gatk,))
@@ -353,12 +346,12 @@ def tumor_br(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
     dbsnp = gatk.get_input_path('dbsnp.vcf')
 
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
-    tumor_bai = gatk.get_intermediate_path('tumor.indel.bam.bai')
+    gatk.get_intermediate_path('tumor.indel.bam.bai', return_path=False)
+    gatk.get_input_path('reference.fasta.fai', False)
+    gatk.get_input_path('reference.dict', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'tumor.recal.table')
@@ -373,7 +366,7 @@ def tumor_br(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
+    gatk.upload_to_s3(output)
 
     # Spawn Child
     target.addChildTargetFn(normal_pr, (gatk,))
@@ -386,12 +379,12 @@ def normal_pr(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
 
     normal_indel = gatk.get_intermediate_path('normal.indel.bam')
-    normal_bai = gatk.get_intermediate_path('normal.indel.bam.bai')
-    normal_recal = gatk.get_input_path('normal.recal.table')
+    normal_recal = gatk.get_intermediate_path('normal.recal.table')
+    gatk.get_intermediate_path('normal.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('reference.fasta.fai', False)
+    gatk.get_intermediate_path('reference.dict', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'normal.bqsr.bam')
@@ -407,8 +400,8 @@ def normal_pr(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Upload to S3
-    gatk.upload_to_S3(output)
-    gatk.upload_to_S3(output + '.bai')
+    gatk.upload_to_s3(output)
+    gatk.upload_to_s3(output + '.bai')
 
 
 def tumor_pr(target, gatk):
@@ -418,12 +411,12 @@ def tumor_pr(target, gatk):
     # Retrieve input files
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
 
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
-    tuor_bai = gatk.get_intermediate_path('tumor.indel.bam.bai')
-    tumor_recal = gatk.get_input_path('tumor.recal.table')
+    tumor_recal = gatk.get_intermediate_path('tumor.recal.table')
+    gatk.get_intermediate_path('tumor.indel.bam.bai', return_path=False)
+    gatk.get_intermediate_path('reference.fasta.fai', False)
+    gatk.get_intermediate_path('reference.dict', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'tumor.bqsr.bam')
@@ -439,8 +432,8 @@ def tumor_pr(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Upload to S3
-    gatk.upload_to_S3(output)
-    gatk.upload_to_S3(output + '.bai')
+    gatk.upload_to_s3(output)
+    gatk.upload_to_s3(output + '.bai')
 
 
 def mutect(target, gatk):
@@ -449,28 +442,28 @@ def mutect(target, gatk):
     """
     # Retrieve input files
     ref = gatk.get_input_path('reference.fasta')
-    ref_fai = gatk.get_input_path('reference.fasta.fai')
-    ref_dict = gatk.get_input_path('reference.fasta.dict')
     dbsnp = gatk.get_input_path('dbsnp.vcf')
     cosmic = gatk.get_input_path('cosmic.vcf')
-    mutect = gatk.get_input_path('mutect.vcf')
+    mutect_jar = gatk.get_input_path('mutect.vcf')
 
     normal_bqsr = gatk.get_intermediate_path('normal.bqsr.bam')
-    normal_bai = gatk.get_intermediate_path('normal.bqsr.bam.bai')
     tumor_bqsr = gatk.get_intermediate_path('tumor.bqsr.bam')
-    tumor_bai = gatk.get_intermediate_path('tumor.bqsr.bam.bai')
+    gatk.get_intermediate_path('normal.bqsr.bam.bai', return_path=False)
+    gatk.get_intermediate_path('tumor.bqsr.bam.bai', False)
+    gatk.get_intermediate_path('reference.fasta.fai', False)
+    gatk.get_intermediate_path('reference.dict', False)
 
-    # Output file
-    normal_UUID = gatk.input_URLs['normal.bam'].split('/')[-1].split('.')[0]
-    tumor_UUID = gatk.input_URLs['tumor.bam'].split('/')[-1].split('.')[0]
+    # Output files
+    normal_uuid = gatk.input_URLs['normal.bam'].split('/')[-1].split('.')[0]
+    tumor_uuid = gatk.input_URLs['tumor.bam'].split('/')[-1].split('.')[0]
 
-    output = os.path.join(gatk.pair_dir, '{}-normal:{}-tumor.vcf'.format(normal_UUID, tumor_UUID))
+    output = os.path.join(gatk.pair_dir, '{}-normal:{}-tumor.vcf'.format(normal_uuid, tumor_uuid))
     mut_out = os.path.join(gatk.pair_dir, 'mutect.out')
     mut_cov = os.path.join(gatk.pair_dir, 'mutect.coverage')
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', mutect, '--analysis_type', 'MuTect',
+        subprocess.check_call(['java', '-Xmx15g', '-jar', mutect_jar, '--analysis_type', 'MuTect',
                                '--reference_sequence', ref, '--cosmic', cosmic, '--tumor_lod', str(10),
                                '--dbsnp', dbsnp, 'input_file:normal', normal_bqsr,
                                'input_file:tumor', tumor_bqsr, '--out', mut_out,
@@ -480,7 +473,7 @@ def mutect(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or mutect.jar')
     # Upload to S3
-    gatk.upload_to_S3(output)
+    gatk.upload_to_s3(output)
 
     # Spawn Child
     if gatk.cleanUp:
@@ -488,24 +481,24 @@ def mutect(target, gatk):
 
 
 def teardown(target, gatk):
-
     # Remove local files
 
     # Remove intermediate S3 files
     pass
+
 
 class SupportGATK(object):
     """
     Class to encapsulate all necessary data structures and methods used in the pipeline.
     """
 
-    def __init__(self, input_URLs, local_dir, shared_dir, pair_dir, cleanUp=False):
-        self.input_URLs = input_URLs
+    def __init__(self, input_urls, local_dir, shared_dir, pair_dir, cleanup=False):
+        self.input_URLs = input_urls
         self.local_dir = local_dir
         self.shared_dir = shared_dir
         self.pair_dir = pair_dir
         self.cpu_count = multiprocessing.cpu_count()
-        self.cleanUp = cleanUp
+        self.cleanUp = cleanup
 
     def get_input_path(self, name):
         """
@@ -532,7 +525,7 @@ class SupportGATK(object):
 
         return file_path
 
-    def get_intermediate_path(self, name):
+    def get_intermediate_path(self, name, return_path=True):
 
         # Get path to file
         shared = '.fai' in name or '.dict' in name
@@ -558,9 +551,10 @@ class SupportGATK(object):
             except:
                 raise RuntimeError('Contents from S3 could not be written to: {}'.format(file_path))
 
-        return file_path
+        if return_path:
+            return file_path
 
-    def upload_to_S3(self, file_path):
+    def upload_to_s3(self, file_path):
         """
         file should be the path to the file, ex:  /mnt/jobtree/script/uuid4/pair/foo.vcf
         Files will be uploaded to: s3://bd2k-<script_name>/<UUID4> if shared
@@ -619,7 +613,7 @@ def main():
     args = parser.parse_args()
 
     # Store inputs for easy unpacking/passing. Create dict for intermediate files.
-    input_URLs = {'reference.fasta': args.reference,
+    input_urls = {'reference.fasta': args.reference,
                   'normal.bam': args.normal,
                   'tumor.bam': args.tumor,
                   'phase.vcf': args.phase,
@@ -627,28 +621,31 @@ def main():
                   'dbsnp.vcf': args.dbsnp,
                   'cosmic.vcf': args.cosmic,
                   'gatk.jar': args.gatk,
-                  'mutect.jar' : args.mutect}
+                  'mutect.jar': args.mutect}
 
     # Ensure user supplied URLs to files and that BAMs are in the appropriate format
-    for input in input_URLs:
-        if ".com" not in input_URLs[input]:
-            sys.stderr.write("Invalid Input: {}".format(input))
+    for name in input_urls:
+        if ".com" not in input_urls[name]:
+            sys.stderr.write("Invalid Input: {}".format(name))
             raise RuntimeError("Inputs must be valid URLs, please check inputs.")
-        if input == 'normal' or input == 'tumor':
-            if len(input_URLs[input].split('/')[-1].split('.')) != 3:
+        if name == 'normal' or name == 'tumor':
+            if len(input_urls[name].split('/')[-1].split('.')) != 3:
                 raise RuntimeError('{} BAM is not in the appropriate format: \
-                UUID.normal.bam or UUID.tumor.bam'.format(input))
+                UUID.normal.bam or UUID.tumor.bam'.format(name))
 
     # Create directories for shared files and for isolating pairs
     shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0], str(uuid.uuid4()))
-    pair_dir = os.path.join(shared_dir, input_URLs['normal.bam'].split('/')[-1].split('.')[0] +
-                            '-normal:' + input_URLs['tumor.bam'].split('/')[-1].split('.')[0] + '-tumor')
+    pair_dir = os.path.join(shared_dir, input_urls['normal.bam'].split('/')[-1].split('.')[0] +
+                            '-normal:' + input_urls['tumor.bam'].split('/')[-1].split('.')[0] + '-tumor')
 
     # Create SupportGATK instance
-    gatk = SupportGATK(input_URLs, local_dir, shared_dir, pair_dir)
+    gatk = SupportGATK(input_urls, local_dir, shared_dir, pair_dir)
 
     # Create JobTree Stack
     i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
+
+    if i != 0:
+        raise RuntimeError("Failed Jobs")
 
 
 if __name__ == "__main__":
