@@ -350,8 +350,8 @@ def tumor_br(target, gatk):
 
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
     gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
-    gatk.get_input_path('reference.fasta.fai', False)
-    gatk.get_input_path('reference.dict', False)
+    gatk.get_intermediate_path('reference.fasta.fai', False)
+    gatk.get_intermediate_path('reference.dict', False)
 
     # Output file
     output = os.path.join(gatk.pair_dir, 'tumor.recal.table')
