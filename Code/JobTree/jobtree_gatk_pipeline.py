@@ -183,7 +183,7 @@ def normal_rtc(target, gatk):
     normal = gatk.get_input_path('normal.bam')
 
     ref_fai = gatk.get_intermediate_path('reference.fasta.fai')
-    ref_dict = gatk.get_intermediate_path('reference.fasta.dict')
+    ref_dict = gatk.get_intermediate_path('reference.dict')
     normal_bai = gatk.get_intermediate_path('normal.bam.bai')
 
     # Output File
@@ -217,7 +217,7 @@ def tumor_rtc(target, gatk):
     tumor = gatk.get_input_path('tumor.bam')
 
     ref_fai = gatk.get_intermediate_path('reference.fasta.fai')
-    ref_dict = gatk.get_intermediate_path('reference.fasta.dict')
+    ref_dict = gatk.get_intermediate_path('reference.dict')
     tumor_bai = gatk.get_intermediate_path('tumor.bam.bai')
 
     # Output File
