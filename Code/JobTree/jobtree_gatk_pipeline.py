@@ -605,7 +605,7 @@ class SupportGATK(object):
 
 def main():
     # Define global variable: local_dir
-    local_dir = "/mnt/jobtree"
+    local_dir = "/mnt/"
 
     # Handle parser logic
     parser = build_parser()
