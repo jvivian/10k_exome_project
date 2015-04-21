@@ -263,7 +263,7 @@ def normal_ir(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
     gatk.upload_to_s3(output)
-    gatk.upload_to_s3(output + '.bai')
+    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(normal_br, (gatk,))
@@ -300,7 +300,7 @@ def tumor_ir(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
     # Upload to S3
     gatk.upload_to_s3(output)
-    gatk.upload_to_s3(output + '.bai')
+    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(tumor_br, (gatk,))
@@ -401,7 +401,7 @@ def normal_pr(target, gatk):
 
     # Upload to S3
     gatk.upload_to_s3(output)
-    gatk.upload_to_s3(output + '.bai')
+    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
 
 def tumor_pr(target, gatk):
@@ -433,7 +433,7 @@ def tumor_pr(target, gatk):
 
     # Upload to S3
     gatk.upload_to_s3(output)
-    gatk.upload_to_s3(output + '.bai')
+    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
 
 def mutect(target, gatk):
