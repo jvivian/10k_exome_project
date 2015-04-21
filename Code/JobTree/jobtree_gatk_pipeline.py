@@ -107,7 +107,7 @@ def start_node(target, gatk):
     try:
         subprocess.check_call(['picard-tools', 'CreateSequenceDictionary',
                                'R={}'.format(reference),
-                               'O={}.dict'.format(reference)])
+                               'O={}.dict'.format(reference.split('.')[0])])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nPicard failed to create reference dictionary')
     except OSError:
@@ -115,7 +115,7 @@ def start_node(target, gatk):
 
     # upload to S3
     gatk.upload_to_S3(reference + '.fai')
-    gatk.upload_to_S3(reference + '.dict')
+    gatk.upload_to_S3(reference.split('.')[0] + '.dict')
 
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
