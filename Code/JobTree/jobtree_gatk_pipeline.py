@@ -117,7 +117,7 @@ def start_node(target, gatk):
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
     target.addChildTargetFn(tumor_index, (gatk,))
-    #target.addFollowOnTargetFn(mutect, (gatk,))
+    target.addFollowOnTargetFn(mutect, (gatk,))
 
 
 def normal_index(target, gatk):
@@ -195,7 +195,7 @@ def normal_rtc(target, gatk):
     gatk.upload_to_s3(output)
 
     # Spawn Child
-    #target.addChildTargetFn(normal_ir, (gatk,))
+    target.addChildTargetFn(normal_ir, (gatk,))
 
 
 def tumor_rtc(target, gatk):
@@ -229,7 +229,7 @@ def tumor_rtc(target, gatk):
     gatk.upload_to_s3(output)
 
     # Spawn Child
-    #target.addChildTargetFn(normal_ir, (gatk,))
+    target.addChildTargetFn(normal_ir, (gatk,))
 
 
 def normal_ir(target, gatk):
@@ -651,3 +651,12 @@ def main():
 if __name__ == "__main__":
     # from JobTree.jt_GATK import *
     main()
+
+"""
+Example code for recursive 'NodeHandler'
+
+    for child in node.children:
+        target.addChildTargetFn(handleNode, (child,))
+
+    target.addFollowOnTargetFn(handleNode, (gatk,))
+"""
