@@ -192,7 +192,7 @@ def normal_rtc(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'RealignerTargetCreator',
-                               '-nt', gatk.cpu_count, '-R', ref, '-I', normal, '-known', phase,
+                               '-nt', str(gatk.cpu_count), '-R', ref, '-I', normal, '-known', phase,
                                '-known', mills, '--downsampling_type', 'NONE', '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('RealignerTargetCreator failed to finish')
@@ -226,7 +226,7 @@ def tumor_rtc(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'RealignerTargetCreator',
-                               '-nt', gatk.cpu_count, '-R', ref, '-I', tumor, '-known', phase,
+                               '-nt', str(gatk.cpu_count), '-R', ref, '-I', tumor, '-known', phase,
                                '-known', mills, '--downsampling_type', 'NONE', '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('RealignerTargetCreator failed to finish')
@@ -263,7 +263,7 @@ def normal_ir(target, gatk):
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
                                '-R', ref, '-I', normal, '-known', phase, '-known', mills,
                                '-targetIntervals', normal_intervals, '--downsampling_type', 'NONE',
-                               'maxReads', 720000, '-maxInMemory', 5400000, '-o', output])
+                               'maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
@@ -300,7 +300,7 @@ def tumor_ir(target, gatk):
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
                                '-R', ref, '-I', tumor, '-known', phase, '-known', mills,
                                '-targetIntervals', tumor_intervals, '--downsampling_type', 'NONE',
-                               'maxReads', 720000, '-maxInMemory', 5400000, '-o', output])
+                               'maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
@@ -332,8 +332,9 @@ def normal_br(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator', '-nct', gatk.cpu_count,
-                           '-R', ref, '-I', normal_indel, '-knownSites', dbsnp, '-o', output])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
+                               '-nct', str(gatk.cpu_count), '-R', ref, '-I', normal_indel,
+                               '-knownSites', dbsnp, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
@@ -364,8 +365,9 @@ def tumor_br(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator', '-nct', gatk.cpu_count,
-                           '-R', ref, '-I', tumor_indel, '-knownSites', dbsnp, '-o', output])
+        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
+                               '-nct', str(gatk.cpu_count), '-R', ref, '-I', tumor_indel,
+                               '-knownSites', dbsnp, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
@@ -397,7 +399,7 @@ def normal_pr(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'PrintReads',
-                               '-nct', gatk.cpu_count, '-R', ref, '--emit_original_quals',
+                               '-nct', str(gatk.cpu_count), '-R', ref, '--emit_original_quals',
                                '-I', normal_indel, '-BQSR', normal_recal, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('PrintReads failed to finish')
@@ -429,7 +431,7 @@ def tumor_pr(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'PrintReads',
-                               '-nct', gatk.cpu_count, '-R', ref, '--emit_original_quals',
+                               '-nct', str(gatk.cpu_count), '-R', ref, '--emit_original_quals',
                                '-I', tumor_indel, '-BQSR', tumor_recal, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('PrintReads failed to finish')
@@ -469,7 +471,7 @@ def mutect(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', mutect, '--analysis_type', 'MuTect',
-                               '--reference_sequence', ref, '--cosmic', cosmic, '--tumor_lod', 10,
+                               '--reference_sequence', ref, '--cosmic', cosmic, '--tumor_lod', str(10),
                                '--dbsnp', dbsnp, 'input_file:normal', normal_bqsr,
                                'input_file:tumor', tumor_bqsr, '--out', mut_out,
                                '--coverage_file', mut_cov, '--vcf', output])
