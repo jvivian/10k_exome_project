@@ -35,8 +35,8 @@ class TestSupportGATK(unittest.TestCase):
         file1 = 'test_out/{}/test.vcf'.format(self.UUID)
         file2 = 'test_out/{}/pair/normal.bam'.format(self.UUID)
 
-        self.gatk.upload_to_S3(file1)
-        self.gatk.upload_to_S3(file2)
+        self.gatk.upload_to_s3(file1)
+        self.gatk.upload_to_s3(file2)
 
         try:
             conn = boto.connect_s3()
@@ -58,8 +58,8 @@ class TestSupportGATK(unittest.TestCase):
         subprocess.check_call(['curl', '-fs', 'www.google.com', '-o', file2])
 
         # Run test_UploadToS3 first to make sure this works -- Upload to S3
-        self.gatk.upload_to_S3(file1)
-        self.gatk.upload_to_S3(file2)
+        self.gatk.upload_to_s3(file1)
+        self.gatk.upload_to_s3(file2)
 
         # Remove files from local path -- we want GetIntermediatePath to fetch them from S3
         subprocess.check_call(['rm', file1])
