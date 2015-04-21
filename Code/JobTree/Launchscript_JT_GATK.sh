@@ -9,4 +9,5 @@ python jobtree_gatk_pipeline.py \
 --mills "https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/Mills_and_1000G_gold_standard.indels.hg19.sites.fixed.vcf" \
 --dbsnp "https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/dbsnp_132_b37.leftAligned.vcf" \
 --cosmic "https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/b37_cosmic_v54_120711.vcf" \
---gatk 'https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/GenomeAnalysisTK.jar'
+--gatk 'https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/GenomeAnalysisTK.jar' \
+--mutect 'https://s3-us-west-2.amazonaws.com/bd2k-artifacts/10k-exomes/mutect-1.1.7.jar'
