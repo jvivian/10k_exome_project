@@ -325,7 +325,7 @@ def normal_br(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
+        subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
                                '-nct', str(gatk.cpu_count), '-R', ref, '-I', normal_indel,
                                '-knownSites', dbsnp, '-o', output])
     except subprocess.CalledProcessError:
@@ -358,7 +358,7 @@ def tumor_br(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
+        subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
                                '-nct', str(gatk.cpu_count), '-R', ref, '-I', tumor_indel,
                                '-knownSites', dbsnp, '-o', output])
     except subprocess.CalledProcessError:
