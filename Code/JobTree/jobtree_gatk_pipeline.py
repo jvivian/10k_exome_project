@@ -391,7 +391,7 @@ def normal_pr(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'PrintReads',
+        subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'PrintReads',
                                '-nct', str(gatk.cpu_count), '-R', ref, '--emit_original_quals',
                                '-I', normal_indel, '-BQSR', normal_recal, '-o', output])
     except subprocess.CalledProcessError:
@@ -423,7 +423,7 @@ def tumor_pr(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'PrintReads',
+        subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'PrintReads',
                                '-nct', str(gatk.cpu_count), '-R', ref, '--emit_original_quals',
                                '-I', tumor_indel, '-BQSR', tumor_recal, '-o', output])
     except subprocess.CalledProcessError:
