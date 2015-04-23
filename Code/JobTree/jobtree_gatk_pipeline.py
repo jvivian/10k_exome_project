@@ -50,6 +50,9 @@ files are uploaded to:
 curl            - apt-get install curl
 samtools        - apt-get install samtools
 picard-tools    - apt-get install picard-tools
+boto            - pip install boto
+FileChunkIO     - pip install FileChunkIO
+jobTree         - https://github.com/benedictpaten/jobTree
 Active Internet Connection (Boto)
 """
 
@@ -60,6 +63,8 @@ import os
 import subprocess
 import sys
 import uuid
+import math
+from filechunkio import FileChunkIO
 
 import boto
 from boto.s3.key import Key
@@ -582,11 +587,30 @@ class SupportGATK(object):
         # Derive the virtual folder and path for S3
         k.name = file_path[len(self.local_dir):].strip('//')
 
-        # Upload to S3
-        try:
-            k.set_contents_from_filename(file_path)
-        except:
-            raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file_path))
+        # If file_size > 1Gb then upload via multi-part
+        file_size = os.path.getsize(file_path)
+        if (file_size * 1e-9) > 1:
+            # http://boto.readthedocs.org/en/latest/s3_tut.html#storing-large-data
+            mp = bucket.initiate_multipart_upload(k.name)
+            chunk_size = 50000000
+            chunk_count = int(math.ceil(file_size / float(chunk_size)))
+            try:
+                for i in range(chunk_count):
+                    offset = chunk_size * i
+                    bytes = min(chunk_size, file_size - offset)
+                    with FileChunkIO(file_path, 'r', offset=offset, bytes=bytes) as fp:
+                        mp.upload_part_from_file(fp, part_num=i + 1)
+            except:
+                mp.cancel_upload()
+            else:
+                mp.complete_upload()
+
+        else:
+            # Upload to S3 directly
+            try:
+                k.set_contents_from_filename(file_path)
+            except:
+                raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file_path))
 
     @staticmethod
     def mkdir_p(path):
