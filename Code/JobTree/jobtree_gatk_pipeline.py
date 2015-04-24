@@ -449,7 +449,7 @@ def mutect(target, gatk):
     ref = gatk.get_input_path('reference.fasta')
     dbsnp = gatk.get_input_path('dbsnp.vcf')
     cosmic = gatk.get_input_path('cosmic.vcf')
-    mutect_jar = gatk.get_input_path('mutect.vcf')
+    mutect_jar = gatk.get_input_path('mutect.jar')
 
     normal_bqsr = gatk.get_intermediate_path('normal.bqsr.bam')
     tumor_bqsr = gatk.get_intermediate_path('tumor.bqsr.bam')
