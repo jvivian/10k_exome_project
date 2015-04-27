@@ -353,6 +353,9 @@ def tumor_br(target, gatk):
     ref = gatk.get_input_path('reference.fasta')
     dbsnp = gatk.get_input_path('dbsnp.vcf')
 
+    # TEST CODE -- Delete tumor.indel.bam from local so it is fetched from S3 by get_intermediate_path
+    os.remove(os.path.join(gatk.pair_dir, 'tumor.indel.bam'))
+
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
     gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
     gatk.get_intermediate_path('reference.fasta.fai', False)
@@ -451,6 +454,9 @@ def mutect(target, gatk):
     cosmic = gatk.get_input_path('cosmic.vcf')
     mutect_jar = gatk.get_input_path('mutect.jar')
 
+    # TEST CODE -- Delete tumor.bqsr.bam from local so it is fetched from S3 by get_intermediate_path
+    os.remove(os.path.join(gatk.pair_dir, 'tumor.bqsr.bam'))
+
     normal_bqsr = gatk.get_intermediate_path('normal.bqsr.bam')
     tumor_bqsr = gatk.get_intermediate_path('tumor.bqsr.bam')
     gatk.get_intermediate_path('normal.bqsr.bai', return_path=False)
@@ -487,9 +493,20 @@ def mutect(target, gatk):
 
 def teardown(target, gatk):
     # Remove local files
+    shared_files = [os.path.join(gatk.shared_dir, f) for f in os.listdir(gatk.shared_dir) if os.path.isfile(f)]
+    for f in shared_files:
+        os.remove(f)
+
+    paired_files = [os.path.join(gatk.pair_dir, f) for f in os.listdir(gatk.pair_dir) if not '.vcf' in f]
+    for f in paired_files:
+        os.remove(f)
 
     # Remove intermediate S3 files
-    pass
+    bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(bucket_name)
+    keys_to_delete = [k for k in bucket.get_all_keys() if not 'tumor.vcf' in k]
+    bucket.delete_keys(keys_to_delete)
 
 
 class SupportGATK(object):
@@ -663,7 +680,7 @@ def main():
                             '-normal:' + input_urls['tumor.bam'].split('/')[-1].split('.')[0] + '-tumor')
 
     # Create SupportGATK instance
-    gatk = SupportGATK(input_urls, local_dir, shared_dir, pair_dir)
+    gatk = SupportGATK(input_urls, local_dir, shared_dir, pair_dir, cleanup=True)
 
     # Create JobTree Stack
     i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
@@ -675,12 +692,3 @@ def main():
 if __name__ == "__main__":
     # from JobTree.jt_GATK import *
     main()
-
-"""
-Example code for recursive 'NodeHandler'
-
-    for child in node.children:
-        target.addChildTargetFn(handleNode, (child,))
-
-    target.addFollowOnTargetFn(handleNode, (gatk,))
-"""
