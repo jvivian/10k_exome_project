@@ -318,24 +318,12 @@ def normal_cleanup_bam(target, gatk):
     # Remove locally
     os.remove(os.path.join(gatk.pair_dir, 'normal.bam'))
 
-    # Remove from S3
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(gatk.bucket_name)
-    key_to_delete = [k for k in bucket.get_all_keys() if 'normal.bam' in k.name][0]
-    bucket.delete_key(key_to_delete)
-
     target.addChildTargetFn(normal_br, (gatk,))
 
 
 def tumor_cleanup_start(target, gatk):
     # Remove locally
     os.remove(os.path.join(gatk.pair_dir, 'tumor.bam'))
-
-    # Remove from S3
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(gatk.bucket_name)
-    key_to_delete = [k for k in bucket.get_all_keys() if 'tumor.bam' in k.name][0]
-    bucket.delete_key(key_to_delete)
 
     target.addChildTargetFn(tumor_br, (gatk,))
 
@@ -737,5 +725,5 @@ def main():
 
 
 if __name__ == "__main__":
-    from jobtree.gatk.pipeline import *
+    from jobtree_gatk_pipeline import *
     main()
