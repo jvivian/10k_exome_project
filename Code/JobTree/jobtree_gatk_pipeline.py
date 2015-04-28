@@ -487,7 +487,7 @@ def mutect(target, gatk):
     gatk.upload_to_s3(output)
 
     # Spawn Child
-    if gatk.cleanUp:
+    if gatk.cleanup:
         target.addChildTargetFn(teardown, (gatk,))
 
 
@@ -505,7 +505,7 @@ def teardown(target, gatk):
     bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
     conn = boto.connect_s3()
     bucket = conn.get_bucket(bucket_name)
-    keys_to_delete = [k for k in bucket.get_all_keys() if not 'tumor.vcf' in k]
+    keys_to_delete = [k for k in bucket.get_all_keys() if not 'tumor.vcf' in k.name]
     bucket.delete_keys(keys_to_delete)
 
 
@@ -520,7 +520,7 @@ class SupportGATK(object):
         self.shared_dir = shared_dir
         self.pair_dir = pair_dir
         self.cpu_count = multiprocessing.cpu_count()
-        self.cleanUp = cleanup
+        self.cleanup = cleanup
 
     def get_input_path(self, name):
         """
