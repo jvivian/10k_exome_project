@@ -271,7 +271,7 @@ def normal_ir(target, gatk):
     gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
-    target.addChildTargetFn(normal_br, (gatk,))
+    target.addChildTargetFn(normal_cleanup_bam, (gatk,))
 
 
 def tumor_ir(target, gatk):
@@ -308,6 +308,35 @@ def tumor_ir(target, gatk):
     gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
+    target.addChildTargetFn(tumor_cleanup_start, (gatk,))
+
+
+def normal_cleanup_bam(target, gatk):
+    """
+    remove intermediate files to reduce storage costs and keep disk space free
+    """
+    # Remove locally
+    os.remove(os.path.join(gatk.pair_dir, 'normal.bam'))
+
+    # Remove from S3
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(gatk.bucket_name)
+    key_to_delete = [k for k in bucket.get_all_keys() if 'normal.bam' in k.name][0]
+    bucket.delete_key(key_to_delete)
+
+    target.addChildTargetFn(normal_br, (gatk,))
+
+
+def tumor_cleanup_start(target, gatk):
+    # Remove locally
+    os.remove(os.path.join(gatk.pair_dir, 'tumor.bam'))
+
+    # Remove from S3
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(gatk.bucket_name)
+    key_to_delete = [k for k in bucket.get_all_keys() if 'tumor.bam' in k.name][0]
+    bucket.delete_key(key_to_delete)
+
     target.addChildTargetFn(tumor_br, (gatk,))
 
 
@@ -352,9 +381,6 @@ def tumor_br(target, gatk):
     gatk_jar = gatk.get_input_path('gatk.jar')
     ref = gatk.get_input_path('reference.fasta')
     dbsnp = gatk.get_input_path('dbsnp.vcf')
-
-    # TEST CODE -- Delete tumor.indel.bam from local so it is fetched from S3 by get_intermediate_path
-    os.remove(os.path.join(gatk.pair_dir, 'tumor.indel.bam'))
 
     tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
     gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
@@ -411,6 +437,8 @@ def normal_pr(target, gatk):
     gatk.upload_to_s3(output)
     gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
+    target.addChildTargetFn(normal_indel_cleaup, (gatk,))
+
 
 def tumor_pr(target, gatk):
     """
@@ -443,6 +471,30 @@ def tumor_pr(target, gatk):
     gatk.upload_to_s3(output)
     gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
+    target.addChildTargetFn(tumor_indel_cleanup, (gatk,))
+
+
+def normal_indel_cleaup(target, gatk):
+    # Remove locally
+    os.remove(os.path.join(gatk.pair_dir, 'normal.indel.bam'))
+
+    # Remove from S3
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(gatk.bucket_name)
+    key_to_delete = [k for k in bucket.get_all_keys() if 'normal.indel.bam' in k.name][0]
+    bucket.delete_key(key_to_delete)
+
+
+def tumor_indel_cleanup(target, gatk):
+    # Remove locally
+    os.remove(os.path.join(gatk.pair_dir, 'tumor.indel.bam'))
+
+    # Remove from S3
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(gatk.bucket_name)
+    key_to_delete = [k for k in bucket.get_all_keys() if 'tumor.indel.bam' in k.name][0]
+    bucket.delete_key(key_to_delete)
+
 
 def mutect(target, gatk):
     """
@@ -453,9 +505,6 @@ def mutect(target, gatk):
     dbsnp = gatk.get_input_path('dbsnp.vcf')
     cosmic = gatk.get_input_path('cosmic.vcf')
     mutect_jar = gatk.get_input_path('mutect.jar')
-
-    # TEST CODE -- Delete tumor.bqsr.bam from local so it is fetched from S3 by get_intermediate_path
-    os.remove(os.path.join(gatk.pair_dir, 'tumor.bqsr.bam'))
 
     normal_bqsr = gatk.get_intermediate_path('normal.bqsr.bam')
     tumor_bqsr = gatk.get_intermediate_path('tumor.bqsr.bam')
@@ -497,15 +546,14 @@ def teardown(target, gatk):
     for f in shared_files:
         os.remove(f)
 
-    paired_files = [os.path.join(gatk.pair_dir, f) for f in os.listdir(gatk.pair_dir) if not '.vcf' in f]
+    paired_files = [os.path.join(gatk.pair_dir, f) for f in os.listdir(gatk.pair_dir) if '.vcf' not in f]
     for f in paired_files:
         os.remove(f)
 
     # Remove intermediate S3 files
-    bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
     conn = boto.connect_s3()
-    bucket = conn.get_bucket(bucket_name)
-    keys_to_delete = [k for k in bucket.get_all_keys() if not 'tumor.vcf' in k.name]
+    bucket = conn.get_bucket(gatk.bucket_name)
+    keys_to_delete = [k for k in bucket.get_all_keys() if 'tumor.vcf' not in k.name]
     bucket.delete_keys(keys_to_delete)
 
 
@@ -519,8 +567,9 @@ class SupportGATK(object):
         self.local_dir = local_dir
         self.shared_dir = shared_dir
         self.pair_dir = pair_dir
-        self.cpu_count = multiprocessing.cpu_count()
         self.cleanup = cleanup
+        self.cpu_count = multiprocessing.cpu_count()
+        self.bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
 
     def get_input_path(self, name):
         """
@@ -559,14 +608,13 @@ class SupportGATK(object):
 
         # Check if file exists, download if not present from s3
         if not os.path.exists(file_path):
-            bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
             try:
                 conn = boto.connect_s3()
-                bucket = conn.get_bucket(bucket_name)
+                bucket = conn.get_bucket(self.bucket_name)
                 k = Key(bucket)
                 k.name = file_path[len(self.local_dir):].strip('//')
             except:
-                raise RuntimeError('Could not connect to S3 and retrieve bucket: {}'.format(bucket_name))
+                raise RuntimeError('Could not connect to S3 and retrieve bucket: {}'.format(self.bucket_name))
 
             try:
                 k.get_contents_to_filename(file_path)
@@ -578,7 +626,7 @@ class SupportGATK(object):
 
     def upload_to_s3(self, file_path):
         """
-        file should be the path to the file, ex:  /mnt/jobtree/script/uuid4/pair/foo.vcf
+        file should be the path to the file, ex:  /mnt/script/uuid4/pair/foo.vcf
         Files will be uploaded to: s3://bd2k-<script_name>/<UUID4> if shared
                               and: s3://bd2k-<script_name>/<UUID4>/<pair> if specific to that T/N pair.
         :param file_path: str
@@ -587,12 +635,11 @@ class SupportGATK(object):
         conn = boto.connect_s3()
 
         # Set bucket to bd2k-<script_name>
-        bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
         try:
-            bucket = conn.get_bucket(bucket_name)
+            bucket = conn.get_bucket(self.bucket_name)
         except S3ResponseError as e:
             if e.error_code == 'NoSuchBucket':
-                bucket = conn.create_bucket(bucket_name)
+                bucket = conn.create_bucket(self.bucket_name)
             else:
                 raise e
 
@@ -690,5 +737,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # from JobTree.jt_GATK import *
+    # from jobtree.gatk.pipeline import *
     main()
