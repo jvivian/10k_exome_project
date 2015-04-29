@@ -717,7 +717,7 @@ def main():
     # Create SupportGATK instance
     gatk = SupportGATK(input_urls, local_dir, shared_dir, pair_dir, cleanup=True)
 
-    # Create JobTree Stack
+    # Create JTree Stack
     i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
 
     if i != 0:
@@ -725,5 +725,5 @@ def main():
 
 
 if __name__ == "__main__":
-    from jobtree_gatk_pipeline import *
+    #from jobtree_gatk_pipeline import *
     main()
