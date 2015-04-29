@@ -725,5 +725,5 @@ def main():
 
 
 if __name__ == "__main__":
-    from jobtree_gatk_pipeline import *
+    #from jobtree_gatk_pipeline import *
     main()
