@@ -145,7 +145,7 @@ def start_node(target, gatk):
     Create .dict/.fai for reference and start children/follow-on
     """
     ref_path = gatk.unavoidable_download_method('reference.fasta')
-    gatk.reference = target.writeGlobalFile(ref_path)
+    gatk.ref_fasta = target.writeGlobalFile(ref_path)
 
     # Create index file for reference genome (.fai)
     try:
@@ -166,8 +166,8 @@ def start_node(target, gatk):
         raise RuntimeError('\nFailed to find "picard". \nInstall via "apt-get install picard-tools')
 
     # create FileStoreIDs
-    gatk.fai = target.writeGlobalFile(ref_path + '.fai')
-    gatk.dict = target.writeGlobalFile(os.path.splitext(ref_path)[0] + '.dict')
+    gatk.ref_fai = target.writeGlobalFile(ref_path + '.fai')
+    gatk.ref_dict = target.writeGlobalFile(os.path.splitext(ref_path)[0] + '.dict')
 
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
@@ -180,18 +180,19 @@ def normal_index(target, gatk):
     Create .bai file for normal.bam
     """
     # Retrieve input bam
-    normal = gatk.get_input_path('normal.bam')
+    normal_path = gatk.unavoidable_download_method('normal.bam')
+    gatk.normal_bam = target.writeGlobalFile(normal_path)
 
     # Create index file for normal.bam (.bai)
     try:
-        subprocess.check_call(['samtools', 'index', normal])
+        subprocess.check_call(['samtools', 'index', normal_path])
     except subprocess.CalledProcessError:
         raise RuntimeError('samtools failed to index BAM')
     except OSError:
         raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
 
-    # Upload to S3
-    gatk.upload_to_s3(normal + '.bai')
+    # Create FileStoreIDs for output
+    gatk.normal_bai = target.writeGlobalFile(normal_path + '.bai')
 
     # Spawn child
     target.addChildTargetFn(normal_rtc, (gatk,))
@@ -202,18 +203,19 @@ def tumor_index(target, gatk):
     Create .bai file for tumor.bam
     """
     # Retrieve input bam
-    tumor = gatk.get_input_path('tumor.bam')
+    tumor_path = gatk.unavoidable_download_method('tumor.bam')
+    gatk.tumor_bam = target.writeGlobalFile(tumor_path)
 
     # Create index file for normal.bam (.bai)
     try:
-        subprocess.check_call(['samtools', 'index', tumor])
+        subprocess.check_call(['samtools', 'index', tumor_path])
     except subprocess.CalledProcessError:
         raise RuntimeError('samtools failed to index BAM')
     except OSError:
         raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
 
     # Upload to S3
-    gatk.upload_to_s3(tumor + '.bai')
+    gatk.tumor_bai = target.writeGlobalFile(tumor_path + '.bai')
 
     # Spawn child
     target.addChildTargetFn(tumor_rtc, (gatk,))
