@@ -233,7 +233,7 @@ def normal_rtc(target, gatk):
     # Store in FileStore
     gatk.gatk_jar = target.writeGlobalFile(gatk_path)
     gatk.phase_vcf = target.writeGlobalFile(phase_path)
-    gatk.milss_vcf = target.writeGlobalFile(mills_path)
+    gatk.mills_vcf = target.writeGlobalFile(mills_path)
 
     # Retrieve paths for files not in FileStore
     ref_fasta = target.readGlobalFile(gatk.ref_fasta)
@@ -256,7 +256,7 @@ def normal_rtc(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStore ID for output
-    gatk.normal_rtc = target.writeGlobalFile(output)
+    gatk.normal_intervals = target.writeGlobalFile(output)
 
     # Spawn Child
     target.addChildTargetFn(normal_ir, (gatk,))
@@ -274,7 +274,7 @@ def tumor_rtc(target, gatk):
     # Store in FileStore
     gatk.gatk_jar = target.writeGlobalFile(gatk_path)
     gatk.phase_vcf = target.writeGlobalFile(phase_path)
-    gatk.milss_vcf = target.writeGlobalFile(mills_path)
+    gatk.mills_vcf = target.writeGlobalFile(mills_path)
 
     # Retrieve paths for files not in FileStore
     ref_fasta = target.readGlobalFile(gatk.ref_fasta)
@@ -297,7 +297,7 @@ def tumor_rtc(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.tumor_rtc = target.writeGlobalFile(output)
+    gatk.tumor_intervals = target.writeGlobalFile(output)
 
     # Spawn Child
     target.addChildTargetFn(tumor_ir, (gatk,))
@@ -307,17 +307,16 @@ def normal_ir(target, gatk):
     """
     Creates realigned normal bams
     """
-    # Retrieve input files
-    gatk_jar = gatk.get_input_path('gatk.jar')
-    ref = gatk.get_input_path('reference.fasta')
-    normal = gatk.get_input_path('normal.bam')
-    phase = gatk.get_input_path('phase.vcf')
-    mills = gatk.get_input_path('mills.vcf')
-
-    normal_intervals = gatk.get_intermediate_path('normal.intervals')
-    gatk.get_intermediate_path('reference.fasta.fai', return_path=False)
-    gatk.get_intermediate_path('reference.dict', False)
-    gatk.get_intermediate_path('normal.bam.bai', False)
+    # Retrieve paths from FileStoreID
+    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
+    phase_vcf = target.readGlobalFile(gatk.phase_vcf)
+    mills_vcf = target.readGlobalFile(gatk.mills_vcf)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    normal_bam = target.readGlobalFile(gatk.normal_bam)
+    normal_bai = target.readGlobalFile(gatk.normal_bai)
+    normal_intervals = target.readGlobalFile(gatk.normal_intervals)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.indel.bam')
@@ -325,16 +324,17 @@ def normal_ir(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
-                               '-R', ref, '-I', normal, '-known', phase, '-known', mills,
+                               '-R', ref_fasta, '-I', normal_bam, '-known', phase_vcf, '-known', mills_vcf,
                                '-targetIntervals', normal_intervals, '--downsampling_type', 'NONE',
                                '-maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
-    # Upload to S3
-    gatk.upload_to_s3(output)
-    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
+
+    # Create FileStoreID for output
+    gatk.normal_indel_bam = target.writeGlobalFile(output)
+    gatk.normal_indel_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(normal_cleanup_bam, (gatk,))
@@ -344,17 +344,16 @@ def tumor_ir(target, gatk):
     """
     Creates realigned tumor bams
     """
-    # Retrieve input files
-    gatk_jar = gatk.get_input_path('gatk.jar')
-    ref = gatk.get_input_path('reference.fasta')
-    tumor = gatk.get_input_path('tumor.bam')
-    phase = gatk.get_input_path('phase.vcf')
-    mills = gatk.get_input_path('mills.vcf')
-
-    tumor_intervals = gatk.get_intermediate_path('tumor.intervals')
-    gatk.get_intermediate_path('reference.fasta.fai', return_path=False)
-    gatk.get_intermediate_path('reference.dict', False)
-    gatk.get_intermediate_path('normal.bam.bai', False)
+    # Retrieve paths from FileStoreID
+    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
+    phase_vcf = target.readGlobalFile(gatk.phase_vcf)
+    mills_vcf = target.readGlobalFile(gatk.mills_vcf)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    tumor_bam = target.readGlobalFile(gatk.tumor_bam)
+    tumor_bai = target.readGlobalFile(gatk.tumor_bai)
+    tumor_intervals = target.readGlobalFile(gatk.tumor_intervals)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.indel.bam')
@@ -362,16 +361,17 @@ def tumor_ir(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx15g', '-jar', gatk_jar, '-T', 'IndelRealigner',
-                               '-R', ref, '-I', tumor, '-known', phase, '-known', mills,
+                               '-R', ref_fasta, '-I', tumor_bam, '-known', phase_vcf, '-known', mills_vcf,
                                '-targetIntervals', tumor_intervals, '--downsampling_type', 'NONE',
                                '-maxReads', str(720000), '-maxInMemory', str(5400000), '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('IndelRealignment failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
-    # Upload to S3
-    gatk.upload_to_s3(output)
-    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
+
+    # Create FileStoreID for output
+    gatk.tumor_indel_bam = target.writeGlobalFile(output)
+    gatk.tumor_indel_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(tumor_cleanup_start, (gatk,))
@@ -453,7 +453,7 @@ def tumor_br(target, gatk):
         raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
-    # Upload to S3
+    # Create FileStoreID for output
     gatk.upload_to_s3(output)
 
     # Spawn Child
@@ -487,7 +487,7 @@ def normal_pr(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
-    # Upload to S3
+    # Create FileStoreID for output
     gatk.upload_to_s3(output)
     gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
@@ -521,7 +521,7 @@ def tumor_pr(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
-    # Upload to S3
+    # Create FileStoreID for output
     gatk.upload_to_s3(output)
     gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
 
@@ -586,7 +586,7 @@ def mutect(target, gatk):
         raise RuntimeError('Mutect failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or mutect.jar')
-    # Upload to S3
+    # Create FileStoreID for output
     gatk.upload_to_s3(output)
 
     # Spawn Child
