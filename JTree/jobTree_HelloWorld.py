@@ -56,8 +56,5 @@ if __name__ == '__main__':
     Stack.addJobTreeOptions(parser)
     options, args = parser.parse_args()
 
-    # Create object that contains our FileStoreIDs
-
-
     # Setup the job stack and launch jobTree job
     i = Stack(Target.makeTargetFn(hello_world)).startJobTree(options)
