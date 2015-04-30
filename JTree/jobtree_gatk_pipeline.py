@@ -91,6 +91,13 @@ def build_parser():
     return parser
 
 
+class SupportGATK(object):
+    def __init__(self, target, input_urls, cleanup=False):
+        self.input_URLs = input_urls
+        self.cleanup = cleanup
+        self.cpu_count = multiprocessing.cpu_count()
+
+
 def start_node(target, gatk):
     """
     Create .dict/.fai for reference and start children/follow-on
@@ -545,6 +552,7 @@ def teardown(target, gatk):
     bucket.delete_keys(keys_to_delete)
 
 
+'''
 class SupportGATK(object):
     """
     Class to encapsulate all necessary data structures and methods used in the pipeline.
@@ -678,10 +686,9 @@ class SupportGATK(object):
             else:
                 raise
 
+'''
 
 def main():
-    # Define global variable: local_dir
-    local_dir = "/mnt/"
 
     # Handle parser logic
     parser = build_parser()
@@ -709,16 +716,8 @@ def main():
                 raise RuntimeError('{} BAM is not in the appropriate format: \
                 UUID.normal.bam or UUID.tumor.bam'.format(name))
 
-    # Create directories for shared files and for isolating pairs
-    shared_dir = os.path.join(local_dir, os.path.basename(__file__).split('.')[0], str(uuid.uuid4()))
-    pair_dir = os.path.join(shared_dir, input_urls['normal.bam'].split('/')[-1].split('.')[0] +
-                            '-normal:' + input_urls['tumor.bam'].split('/')[-1].split('.')[0] + '-tumor')
-
-    # Create SupportGATK instance
-    gatk = SupportGATK(input_urls, local_dir, shared_dir, pair_dir, cleanup=True)
-
     # Create JTree Stack
-    i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
+    i = Stack(Target.makeTargetFn(start_node)).startJobTree(args)
 
     if i != 0:
         raise RuntimeError("Failed Jobs")
