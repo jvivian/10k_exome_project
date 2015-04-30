@@ -11,21 +11,20 @@ from optparse import OptionParser
 
 
 class HelloWorld(object):
-    def __init__(self):
-        self.foo_bam = None
-        self.bar_bam = None
+    def __init__(self, target):
+        self.foo_bam = target.getEmptyFileStoreID()
+        self.bar_bam = target.getEmptyFileStoreID()
 
 
-def hello_world(target, hw):
+def hello_world(target):
 
-    # Create empty FileStoreID for foo_bam
-    hw.foo_bam = target.getEmptyFileStoreID()
+    hw = HelloWorld(target)
 
     with open('foo_bam.txt', 'w') as handle:
         handle.write('\nThis is a triumph...\n')
 
-    # Update FileStoreID with an associated file
-    target.updateGlobalFile(hw.foo_bam, 'foo_bam.txt')
+    # Assign FileStoreID to a given file
+    hw.foo_bam = target.writeGlobalFile('foo_bam.txt')
 
     # Spawn child
     target.addChildTargetFn(hello_world_child, (hw,))
@@ -40,17 +39,14 @@ def hello_world_child(target, hw):
 
     # NOTE: path and the udpated file are stored to /tmp
     # If we want to SAVE our changes to this tmp file, we must write it out.
-
-    # Create empty FileStoreID for bar_bam
-    hw.bar_bam = target.getEmptyFileStoreID()
-
     with open(path, 'r') as r:
         with open('bar_bam.txt', 'w') as handle:
             for line in r.readlines():
                 handle.write(line)
 
-    # Update FileStoreID
-    target.updateGlobalFile(hw.bar_bam, 'bar_bam.txt')
+    # Assign FileStoreID to a given file
+    # can also use:  target.updateGlobalFile() given the FileStoreID instantiation.
+    hw.bar_bam = target.writeGlobalFile('bar_bam.txt')
 
 
 if __name__ == '__main__':
@@ -61,7 +57,7 @@ if __name__ == '__main__':
     options, args = parser.parse_args()
 
     # Create object that contains our FileStoreIDs
-    hw = HelloWorld()
+
 
     # Setup the job stack and launch jobTree job
-    i = Stack(Target.makeTargetFn(hello_world, (hw,))).startJobTree(options)
+    i = Stack(Target.makeTargetFn(hello_world)).startJobTree(options)
