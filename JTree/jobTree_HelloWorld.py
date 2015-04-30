@@ -8,6 +8,7 @@
 from jobTree.src.target import Target
 from jobTree.src.stack import Stack
 from optparse import OptionParser
+import os
 
 
 class HelloWorld(object):
@@ -32,21 +33,32 @@ def hello_world(target):
 
 def hello_world_child(target, hw):
 
-    path = target.readGlobalFile(hw.foo_bam)
+    foo_path = target.readGlobalFile(hw.foo_bam)
 
-    with open(path, 'a') as handle:
+    with open(foo_path, 'a') as handle:
         handle.write("\nFileStoreID works!\n")
 
     # NOTE: path and the udpated file are stored to /tmp
     # If we want to SAVE our changes to this tmp file, we must write it out.
-    with open(path, 'r') as r:
+    with open(foo_path, 'r') as r:
         with open('bar_bam.txt', 'w') as handle:
             for line in r.readlines():
                 handle.write(line)
 
+
     # Assign FileStoreID to a given file
     # can also use:  target.updateGlobalFile() given the FileStoreID instantiation.
     hw.bar_bam = target.writeGlobalFile('bar_bam.txt')
+    bar_path = target.readGlobalFile(hw.bar_bam)
+
+    with open('log.txt', 'w') as handle:
+        handle.write('\n\n{}\n\n{}\n\n'.format(foo_path, bar_path))
+
+    target.addChildTargetFn(cleanup)
+
+def cleanup(target):
+    os.remove('bar_bam.txt')
+    os.remove('foo_bam.txt')
 
 
 if __name__ == '__main__':
