@@ -70,8 +70,8 @@ import boto
 from boto.s3.key import Key
 from boto.exception import S3ResponseError
 
-from jobTree.scriptTree.stack import Stack
-from jobTree.scriptTree.target import Target
+from jobTree.src.stack import Stack
+from jobTree.src.target import Target
 
 
 def build_parser():
@@ -88,25 +88,68 @@ def build_parser():
     parser.add_argument('-c', '--cosmic', required=True, help='b37_cosmic_v54_120711.vcf URL')
     parser.add_argument('-g', '--gatk', required=True, help='GenomeAnalysisTK.jar')
     parser.add_argument('-u', '--mutect', required=True, help='Mutect.jar')
+    parser.add_argument('-w', '--work_dir', required=True, help='Where you wanna work from? (full path please)')
     return parser
 
 
 class SupportGATK(object):
-    def __init__(self, target, input_urls, cleanup=False):
-        self.input_URLs = input_urls
+    def __init__(self, input_urls, args, cleanup=False):
+        self.input_urls = input_urls
+        self.input_URLs = args
         self.cleanup = cleanup
         self.cpu_count = multiprocessing.cpu_count()
+        self.work_dir = os.path.join(str(args.work_dir),
+                                     'bd2k-{}'.format(os.path.basename(__file__).split('.')[0]),
+                                     str(uuid.uuid4()))
+
+    def unavoidable_download_method(self, name, gatk):
+        """
+        Accepts filename. Downloads if not present. returns path to file.
+        """
+        # Get path to file
+        file_path = os.path.join(gatk.work_dir, name)
+
+        # Create necessary directories if not present
+        self.mkdir_p(gatk.work_dir)
+
+        # Check if file exists, download if not present
+        if not os.path.exists(file_path):
+            try:
+                subprocess.check_call(['curl', '-fs', self.input_URLs[name], '-o', file_path])
+            except subprocess.CalledProcessError:
+                raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL')
+            except OSError:
+                raise RuntimeError('Failed to find "curl". Install via "apt-get install curl"')
+
+        assert os.path.exists(file_path)
+
+        return file_path
+
+    @staticmethod
+    def mkdir_p(path):
+        """
+        The equivalent of mkdir -p
+        https://github.com/BD2KGenomics/bd2k-python-lib/blob/master/src/bd2k/util/files.py
+        """
+        try:
+            os.makedirs(path)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
 
 
 def start_node(target, gatk):
     """
     Create .dict/.fai for reference and start children/follow-on
     """
-    reference = gatk.get_input_path('reference.fasta')
+    ref_path = gatk.unavoidable_download_method('reference.fasta')
+    gatk.reference = target.writeGlobalFile(ref_path)
 
     # Create index file for reference genome (.fai)
     try:
-        subprocess.check_call(['samtools', 'faidx', reference])
+        subprocess.check_call(['samtools', 'faidx', ref_path])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nsamtools failed to create reference index!')
     except OSError:
@@ -115,16 +158,16 @@ def start_node(target, gatk):
     # Create dict file for reference genome (.dict)
     try:
         subprocess.check_call(['picard-tools', 'CreateSequenceDictionary',
-                               'R={}'.format(reference),
-                               'O={}.dict'.format(os.path.splitext(reference)[0])])
+                               'R={}'.format(ref_path),
+                               'O={}.dict'.format(os.path.splitext(ref_path)[0])])
     except subprocess.CalledProcessError:
         raise RuntimeError('\nPicard failed to create reference dictionary')
     except OSError:
         raise RuntimeError('\nFailed to find "picard". \nInstall via "apt-get install picard-tools')
 
-    # upload to S3
-    gatk.upload_to_s3(reference + '.fai')
-    gatk.upload_to_s3(os.path.splitext(reference)[0] + '.dict')
+    # create FileStoreIDs
+    gatk.fai = target.writeGlobalFile(ref_path + '.fai')
+    gatk.dict = target.writeGlobalFile(os.path.splitext(ref_path)[0] + '.dict')
 
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
@@ -688,6 +731,7 @@ class SupportGATK(object):
 
 '''
 
+
 def main():
 
     # Handle parser logic
@@ -695,26 +739,21 @@ def main():
     Stack.addJobTreeOptions(parser)
     args = parser.parse_args()
 
-    # Store inputs for easy unpacking/passing. Create dict for intermediate files.
     input_urls = {'reference.fasta': args.reference,
-                  'normal.bam': args.normal,
-                  'tumor.bam': args.tumor,
-                  'phase.vcf': args.phase,
-                  'mills.vcf': args.mills,
-                  'dbsnp.vcf': args.dbsnp,
-                  'cosmic.vcf': args.cosmic,
-                  'gatk.jar': args.gatk,
-                  'mutect.jar': args.mutect}
+              'normal.bam': args.normal,
+              'tumor.bam': args.tumor,
+              'phase.vcf': args.phase,
+              'mills.vcf': args.mills,
+              'dbsnp.vcf': args.dbsnp,
+              'cosmic.vcf': args.cosmic,
+              'gatk.jar': args.gatk,
+              'mutect.jar': args.mutect}
 
     # Ensure user supplied URLs to files and that BAMs are in the appropriate format
-    for name in input_urls:
-        if ".com" not in input_urls[name]:
-            sys.stderr.write("Invalid Input: {}".format(name))
-            raise RuntimeError("Inputs must be valid URLs, please check inputs.")
-        if name == 'normal' or name == 'tumor':
-            if len(input_urls[name].split('/')[-1].split('.')) != 3:
-                raise RuntimeError('{} BAM is not in the appropriate format: \
-                UUID.normal.bam or UUID.tumor.bam'.format(name))
+    for bam in [args.normal, args.tumor]:
+        if len(bam.split('/')[-1].split('.')) != 3:
+            raise RuntimeError('{} BAM is not in the appropriate format: \
+            UUID.normal.bam or UUID.tumor.bam'.format(str(bam).split('.')[1]))
 
     # Create JTree Stack
     i = Stack(Target.makeTargetFn(start_node)).startJobTree(args)
