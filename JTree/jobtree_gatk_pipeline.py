@@ -229,11 +229,11 @@ def normal_rtc(target, gatk):
     gatk.mills_vcf = target.writeGlobalFile(mills_path)
 
     # Retrieve paths for files not in FileStore
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    normal_bam = target.readGlobalFile(gatk.normal_bam)
-    normal_bai = target.readGlobalFile(gatk.normal_bai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
+    normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'normal.intervals')
@@ -270,11 +270,11 @@ def tumor_rtc(target, gatk):
     gatk.mills_vcf = target.writeGlobalFile(mills_path)
 
     # Retrieve paths for files not in FileStore
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    tumor_bam = target.readGlobalFile(gatk.tumor_bam)
-    tumor_bai = target.readGlobalFile(gatk.tumor_bai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
+    tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'tumor.intervals')
@@ -301,15 +301,15 @@ def normal_ir(target, gatk):
     Creates realigned normal bams
     """
     # Retrieve paths from FileStoreID
-    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
-    phase_vcf = target.readGlobalFile(gatk.phase_vcf)
-    mills_vcf = target.readGlobalFile(gatk.mills_vcf)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    normal_bam = target.readGlobalFile(gatk.normal_bam)
-    normal_bai = target.readGlobalFile(gatk.normal_bai)
-    normal_intervals = target.readGlobalFile(gatk.normal_intervals)
+    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
+    phase_vcf = read_and_rename_global_file(target, gatk.phase_vcf, '.vcf')
+    mills_vcf = read_and_rename_global_file(target, gatk.mills_vcf, '.vcf')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
+    normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
+    normal_intervals = read_and_rename_global_file(target, gatk.normal_intervals, '.intervals')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.indel.bam')
@@ -338,15 +338,15 @@ def tumor_ir(target, gatk):
     Creates realigned tumor bams
     """
     # Retrieve paths from FileStoreID
-    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
-    phase_vcf = target.readGlobalFile(gatk.phase_vcf)
-    mills_vcf = target.readGlobalFile(gatk.mills_vcf)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    tumor_bam = target.readGlobalFile(gatk.tumor_bam)
-    tumor_bai = target.readGlobalFile(gatk.tumor_bai)
-    tumor_intervals = target.readGlobalFile(gatk.tumor_intervals)
+    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
+    phase_vcf = read_and_rename_global_file(target, gatk.phase_vcf, '.vcf')
+    mills_vcf = read_and_rename_global_file(target, gatk.mills_vcf, '.vcf')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
+    tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
+    tumor_intervals = read_and_rename_global_file(target, gatk.tumor_intervals, '.intervals')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.indel.bam')
@@ -398,12 +398,12 @@ def normal_br(target, gatk):
     gatk.dbsnp_vcf = target.writeGlobalFile(dbsnp_path)
 
     # Retrieve paths via FileStoreID
-    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    normal_indel_bam = target.readGlobalFile(gatk.normal_indel_bam)
-    normal_indel_bai = target.readGlobalFile(gatk.normal_indel_bai)
+    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    normal_indel_bam = read_and_rename_global_file(target, gatk.normal_indel_bam, '.bam')
+    normal_indel_bai = read_and_rename_global_file(target, gatk.normal_indel_bai, '.bai', normal_indel_bam)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.recal.table')
@@ -436,12 +436,12 @@ def tumor_br(target, gatk):
     gatk.dbsnp_vcf = target.writeGlobalFile(dbsnp_path)
 
     # Retrieve paths via FileStoreID
-    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    tumor_indel_bam = target.readGlobalFile(gatk.tumor_indel_bam)
-    tumor_indel_bai = target.readGlobalFile(gatk.tumor_indel_bai)
+    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    tumor_indel_bam = read_and_rename_global_file(target, gatk.tumor_indel_bam, '.bam')
+    tumor_indel_bai = read_and_rename_global_file(target, gatk.tumor_indel_bai, '.bai', tumor_indel_bam)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.recal.table')
@@ -467,14 +467,13 @@ def normal_pr(target, gatk):
     """
     Create normal.bqsr.bam
     """
-    # Retrieve paths via FileStoreID
-    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    normal_indel_bam = target.readGlobalFile(gatk.normal_indel_bam)
-    normal_indel_bai = target.readGlobalFile(gatk.normal_indel_bai)
-    normal_recal = target.readGlobalFile(gatk.normal_recal)
+    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    normal_indel_bam = read_and_rename_global_file(target, gatk.normal_indel_bam, '.bam')
+    normal_indel_bai = read_and_rename_global_file(target, gatk.normal_indel_bai, '.bai', normal_indel_bam)
+    normal_recal = read_and_rename_global_file(target, gatk.normal_recal, '.table')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.bqsr.bam')
@@ -501,13 +500,13 @@ def tumor_pr(target, gatk):
     Create tumor.bqsr.bam
     """
     # Retrieve paths via FileStoreID
-    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
-    tumor_indel_bam = target.readGlobalFile(gatk.tumor_indel_bam)
-    tumor_indel_bai = target.readGlobalFile(gatk.tumor_indel_bai)
-    tumor_recal = target.readGlobalFile(gatk.tumor_recal)
+    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    tumor_indel_bam = read_and_rename_global_file(target, gatk.tumor_indel_bam, '.bam')
+    tumor_indel_bai = read_and_rename_global_file(target, gatk.tumor_indel_bai, '.bai', tumor_indel_bam)
+    tumor_recal = read_and_rename_global_file(target, gatk.tumor_recal, '.table')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.bqsr.bam')
@@ -552,14 +551,14 @@ def mutect(target, gatk):
     mutect_jar = target.writeGlobalFile(mutect_path)
 
     # Retrieve paths from FileStore
-    normal_bqsr_bam = target.readGlobalFile(gatk.normal_bqsr_bam)
-    normal_bqsr_bai = target.readGlobalFile(gatk.normal_bqsr_bai)
-    tumor_bqsr_bam = target.readGlobalFile(gatk.tumor_bqsr_bam)
-    tumor_bqsr_bai = target.readGlobalFile(gatk.tumor_bqsr_bai)
-    dbsnp_vcf = target.readGlobalFile(gatk.dbsnb_vcf)
-    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
-    ref_fai = target.readGlobalFile(gatk.ref_fai)
-    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    normal_bqsr_bam = read_and_rename_global_file(target, gatk.normal_bqsr_bam, '.bam')
+    normal_bqsr_bai = read_and_rename_global_file(target, gatk.normal_bqsr_bai, '.bai', normal_bqsr_bam)
+    tumor_bqsr_bam = read_and_rename_global_file(target, gatk.tumor_bqsr_bam, '.bam')
+    tumor_bqsr_bai = read_and_rename_global_file(target, gatk.tumor_bqsr_bai, '.bai', tumor_bqsr_bam)
+    dbsnp_vcf = read_and_rename_global_file(target, gatk.dbsnb_vcf, '.vcf')
+    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
 
     # Output files
     normal_uuid = gatk.input_URLs['normal.bam'].split('/')[-1].split('.')[0]
@@ -598,6 +597,12 @@ def teardown(target, gatk):
     for f in files:
         os.remove(f)
 
+
+def read_and_rename_global_file(target, fileStoreId, new_extension, diff_name=None):
+    name = target.readGlobalFile(fileStoreId)
+    new_name = ( name if diff_name is None else diff_name ) + new_extension
+    os.rename(name, diff_name)
+    return new_name
 
 def main():
 
