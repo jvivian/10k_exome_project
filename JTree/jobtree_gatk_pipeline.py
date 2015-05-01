@@ -61,14 +61,7 @@ import errno
 import multiprocessing
 import os
 import subprocess
-import sys
 import uuid
-import math
-from filechunkio import FileChunkIO
-
-import boto
-from boto.s3.key import Key
-from boto.exception import S3ResponseError
 
 from jobTree.src.stack import Stack
 from jobTree.src.target import Target
@@ -474,15 +467,14 @@ def normal_pr(target, gatk):
     """
     Create normal.bqsr.bam
     """
-    # Retrieve input files
-    gatk_jar = gatk.get_input_path('gatk.jar')
-    ref = gatk.get_input_path('reference.fasta')
-
-    normal_indel = gatk.get_intermediate_path('normal.indel.bam')
-    normal_recal = gatk.get_intermediate_path('normal.recal.table')
-    gatk.get_intermediate_path('normal.indel.bai', return_path=False)
-    gatk.get_intermediate_path('reference.fasta.fai', False)
-    gatk.get_intermediate_path('reference.dict', False)
+    # Retrieve paths via FileStoreID
+    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    normal_indel_bam = target.readGlobalFile(gatk.normal_indel_bam)
+    normal_indel_bai = target.readGlobalFile(gatk.normal_indel_bai)
+    normal_recal = target.readGlobalFile(gatk.normal_recal)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.bqsr.bam')
@@ -490,16 +482,16 @@ def normal_pr(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'PrintReads',
-                               '-nct', str(gatk.cpu_count), '-R', ref, '--emit_original_quals',
-                               '-I', normal_indel, '-BQSR', normal_recal, '-o', output])
+                               '-nct', str(gatk.cpu_count), '-R', ref_fasta, '--emit_original_quals',
+                               '-I', normal_indel_bam, '-BQSR', normal_recal, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('PrintReads failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.upload_to_s3(output)
-    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
+    gatk.normal_bqsr_bam = target.writeGlobalFile(output)
+    gatk.normal_bqsr_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
 
     target.addChildTargetFn(normal_indel_cleaup, (gatk,))
 
@@ -508,15 +500,14 @@ def tumor_pr(target, gatk):
     """
     Create tumor.bqsr.bam
     """
-    # Retrieve input files
-    gatk_jar = gatk.get_input_path('gatk.jar')
-    ref = gatk.get_input_path('reference.fasta')
-
-    tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
-    tumor_recal = gatk.get_intermediate_path('tumor.recal.table')
-    gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
-    gatk.get_intermediate_path('reference.fasta.fai', False)
-    gatk.get_intermediate_path('reference.dict', False)
+    # Retrieve paths via FileStoreID
+    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    tumor_indel_bam = target.readGlobalFile(gatk.tumor_indel_bam)
+    tumor_indel_bai = target.readGlobalFile(gatk.tumor_indel_bai)
+    tumor_recal = target.readGlobalFile(gatk.tumor_recal)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.bqsr.bam')
@@ -524,16 +515,16 @@ def tumor_pr(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'PrintReads',
-                               '-nct', str(gatk.cpu_count), '-R', ref, '--emit_original_quals',
-                               '-I', tumor_indel, '-BQSR', tumor_recal, '-o', output])
+                               '-nct', str(gatk.cpu_count), '-R', ref_fasta, '--emit_original_quals',
+                               '-I', tumor_indel_bam, '-BQSR', tumor_recal, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('PrintReads failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.upload_to_s3(output)
-    gatk.upload_to_s3(os.path.splitext(output)[0] + '.bai')
+    gatk.tumor_bqsr_bam = target.writeGlobalFile(output)
+    gatk.tumor_bqsr_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
 
     target.addChildTargetFn(tumor_indel_cleanup, (gatk,))
 
@@ -542,40 +533,33 @@ def normal_indel_cleaup(target, gatk):
     # Remove locally
     os.remove(os.path.join(gatk.work_dir, 'normal.indel.bam'))
 
-    # Remove from S3
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(gatk.bucket_name)
-    key_to_delete = [k for k in bucket.get_all_keys() if 'normal.indel.bam' in k.name][0]
-    bucket.delete_key(key_to_delete)
-
 
 def tumor_indel_cleanup(target, gatk):
     # Remove locally
     os.remove(os.path.join(gatk.work_dir, 'tumor.indel.bam'))
-
-    # Remove from S3
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(gatk.bucket_name)
-    key_to_delete = [k for k in bucket.get_all_keys() if 'tumor.indel.bam' in k.name][0]
-    bucket.delete_key(key_to_delete)
 
 
 def mutect(target, gatk):
     """
     Create output VCF
     """
-    # Retrieve input files
-    ref = gatk.get_input_path('reference.fasta')
-    dbsnp = gatk.get_input_path('dbsnp.vcf')
-    cosmic = gatk.get_input_path('cosmic.vcf')
-    mutect_jar = gatk.get_input_path('mutect.jar')
+    # Download files not in FileStore
+    cosmic_path = gatk.unavoidable_download_method('cosmic.vcf')
+    mutect_path = gatk.unavoidable_download_method('gatk.jar')
 
-    normal_bqsr = gatk.get_intermediate_path('normal.bqsr.bam')
-    tumor_bqsr = gatk.get_intermediate_path('tumor.bqsr.bam')
-    gatk.get_intermediate_path('normal.bqsr.bai', return_path=False)
-    gatk.get_intermediate_path('tumor.bqsr.bai', False)
-    gatk.get_intermediate_path('reference.fasta.fai', False)
-    gatk.get_intermediate_path('reference.dict', False)
+    # Add to FileStore
+    cosmic_vcf = target.writeGlobalFile(cosmic_path)
+    mutect_jar = target.writeGlobalFile(mutect_path)
+
+    # Retrieve paths from FileStore
+    normal_bqsr_bam = target.readGlobalFile(gatk.normal_bqsr_bam)
+    normal_bqsr_bai = target.readGlobalFile(gatk.normal_bqsr_bai)
+    tumor_bqsr_bam = target.readGlobalFile(gatk.tumor_bqsr_bam)
+    tumor_bqsr_bai = target.readGlobalFile(gatk.tumor_bqsr_bai)
+    dbsnp_vcf = target.readGlobalFile(gatk.dbsnb_vcf)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
 
     # Output files
     normal_uuid = gatk.input_URLs['normal.bam'].split('/')[-1].split('.')[0]
@@ -587,17 +571,20 @@ def mutect(target, gatk):
 
     # Create interval file
     try:
-        subprocess.check_call(['java', '-Xmx15g', '-jar', mutect_jar, '--analysis_type', 'MuTect',
-                               '--reference_sequence', ref, '--cosmic', cosmic, '--tumor_lod', str(10),
-                               '--dbsnp', dbsnp, '--input_file:normal', normal_bqsr,
-                               '--input_file:tumor', tumor_bqsr, '--out', mut_out,
+        subprocess.check_call(['java', '-Xmx15g', '-jar', mutect_path, '--analysis_type', 'MuTect',
+                               '--reference_sequence', ref_fasta, '--cosmic', cosmic_path, '--tumor_lod', str(10),
+                               '--dbsnp', dbsnp_vcf, '--input_file:normal', normal_bqsr_bam,
+                               '--input_file:tumor', tumor_bqsr_bam, '--out', mut_out,
                                '--coverage_file', mut_cov, '--vcf', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('Mutect failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or mutect.jar')
+
     # Create FileStoreID for output
-    gatk.upload_to_s3(output)
+    gatk.mutect_vcf = target.writeGlobalFile(output)
+    gatk.mutect_out = target.writeGlobalFile(mut_out)
+    gatk.mutect_cov = target.writeGlobalFile(mut_cov)
 
     # Spawn Child
     if gatk.cleanup:
@@ -605,20 +592,11 @@ def mutect(target, gatk):
 
 
 def teardown(target, gatk):
-    # Remove local files
-    shared_files = [os.path.join(gatk.shared_dir, f) for f in os.listdir(gatk.shared_dir) if os.path.isfile(f)]
-    for f in shared_files:
+    # Remove files from local working directory
+    files = [os.path.join(gatk.work_dir, f) for f in os.listdir(gatk.work_dir)
+             if 'tumor.vcf' not in f and os.path.isfile(f)]
+    for f in files:
         os.remove(f)
-
-    paired_files = [os.path.join(gatk.pair_dir, f) for f in os.listdir(gatk.pair_dir) if '.vcf' not in f]
-    for f in paired_files:
-        os.remove(f)
-
-    # Remove intermediate S3 files
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(gatk.bucket_name)
-    keys_to_delete = [k for k in bucket.get_all_keys() if 'tumor.vcf' not in k.name]
-    bucket.delete_keys(keys_to_delete)
 
 
 def main():
@@ -644,8 +622,10 @@ def main():
             raise RuntimeError('{} BAM is not in the appropriate format: \
             UUID.normal.bam or UUID.tumor.bam'.format(str(bam).split('.')[1]))
 
+    gatk = SupportGATK(input_urls, args)
+
     # Create JTree Stack
-    i = Stack(Target.makeTargetFn(start_node)).startJobTree(args)
+    i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
 
     if i != 0:
         raise RuntimeError("Failed Jobs")
