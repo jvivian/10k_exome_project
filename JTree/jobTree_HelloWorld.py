@@ -49,10 +49,12 @@ def hello_world_child(target, hw):
     # Assign FileStoreID to a given file
     # can also use:  target.updateGlobalFile() given the FileStoreID instantiation.
     hw.bar_bam = target.writeGlobalFile('bar_bam.txt')
+    hw.overwrite_test = target.writeGlobalFile('bar_bam.txt')
     bar_path = target.readGlobalFile(hw.bar_bam)
+    test_path = target.readGlobalFile(hw.overwrite_test)
 
     with open('log.txt', 'w') as handle:
-        handle.write('\n\n{}\n\n{}\n\n'.format(foo_path, bar_path))
+        handle.write('\n\n{}\n\n{}\n\n{}\n\n'.format(foo_path, bar_path, test_path))
 
     target.addChildTargetFn(cleanup)
 
