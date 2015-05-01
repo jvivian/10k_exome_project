@@ -398,15 +398,19 @@ def normal_br(target, gatk):
     """
     Creates normal recal table
     """
-    # Retrieve input files
-    gatk_jar = gatk.get_input_path('gatk.jar')
-    ref = gatk.get_input_path('reference.fasta')
-    dbsnp = gatk.get_input_path('dbsnp.vcf')
+    # Download files not in FileStore
+    dbsnp_path = gatk.unavoidable_download_method('dbsnp.vcf')
 
-    normal_indel = gatk.get_intermediate_path('normal.indel.bam')
-    gatk.get_intermediate_path('normal.indel.bai', return_path=False)
-    gatk.get_intermediate_path('reference.fasta.fai', False)
-    gatk.get_intermediate_path('reference.dict', False)
+    # Assign FileStoreID
+    gatk.dbsnp_vcf = target.writeGlobalFile(dbsnp_path)
+
+    # Retrieve paths via FileStoreID
+    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    normal_indel_bam = target.readGlobalFile(gatk.normal_indel_bam)
+    normal_indel_bai = target.readGlobalFile(gatk.normal_indel_bai)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.recal.table')
@@ -414,14 +418,15 @@ def normal_br(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
-                               '-nct', str(gatk.cpu_count), '-R', ref, '-I', normal_indel,
-                               '-knownSites', dbsnp, '-o', output])
+                               '-nct', str(gatk.cpu_count), '-R', ref_fasta, '-I', normal_indel_bam,
+                               '-knownSites', dbsnp_path, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
-    # Upload to S3
-    gatk.upload_to_s3(output)
+
+    # Create FileStoreID for output
+    gatk.normal_recal = target.writeGlobalFile(output)
 
     # Spawn Child
     target.addChildTargetFn(normal_pr, (gatk,))
@@ -431,15 +436,19 @@ def tumor_br(target, gatk):
     """
     Creates tumor recal table
     """
-    # Retrieve input files
-    gatk_jar = gatk.get_input_path('gatk.jar')
-    ref = gatk.get_input_path('reference.fasta')
-    dbsnp = gatk.get_input_path('dbsnp.vcf')
+    # Download files not in FileStore
+    dbsnp_path = gatk.unavoidable_download_method('dbsnp.vcf')
 
-    tumor_indel = gatk.get_intermediate_path('tumor.indel.bam')
-    gatk.get_intermediate_path('tumor.indel.bai', return_path=False)
-    gatk.get_intermediate_path('reference.fasta.fai', False)
-    gatk.get_intermediate_path('reference.dict', False)
+    # Assign FileStoreID
+    gatk.dbsnp_vcf = target.writeGlobalFile(dbsnp_path)
+
+    # Retrieve paths via FileStoreID
+    gatk_jar = target.readGlobalFile(gatk.gatk_jar)
+    ref_fasta = target.readGlobalFile(gatk.ref_fasta)
+    ref_fai = target.readGlobalFile(gatk.ref_fai)
+    ref_dict = target.readGlobalFile(gatk.ref_dict)
+    tumor_indel_bam = target.readGlobalFile(gatk.tumor_indel_bam)
+    tumor_indel_bai = target.readGlobalFile(gatk.tumor_indel_bai)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.recal.table')
@@ -447,14 +456,15 @@ def tumor_br(target, gatk):
     # Create interval file
     try:
         subprocess.check_call(['java', '-Xmx7g', '-jar', gatk_jar, '-T', 'BaseRecalibrator',
-                               '-nct', str(gatk.cpu_count), '-R', ref, '-I', tumor_indel,
-                               '-knownSites', dbsnp, '-o', output])
+                               '-nct', str(gatk.cpu_count), '-R', ref_fasta, '-I', tumor_indel_bam,
+                               '-knownSites', dbsnp_path, '-o', output])
     except subprocess.CalledProcessError:
         raise RuntimeError('BaseRecalibrator failed to finish')
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
+
     # Create FileStoreID for output
-    gatk.upload_to_s3(output)
+    gatk.tumor_recal = target.writeGlobalFile(output)
 
     # Spawn Child
     target.addChildTargetFn(tumor_pr, (gatk,))
@@ -609,143 +619,6 @@ def teardown(target, gatk):
     bucket = conn.get_bucket(gatk.bucket_name)
     keys_to_delete = [k for k in bucket.get_all_keys() if 'tumor.vcf' not in k.name]
     bucket.delete_keys(keys_to_delete)
-
-
-'''
-class SupportGATK(object):
-    """
-    Class to encapsulate all necessary data structures and methods used in the pipeline.
-    """
-
-    def __init__(self, input_urls, local_dir, shared_dir, pair_dir, cleanup=False):
-        self.input_URLs = input_urls
-        self.local_dir = local_dir
-        self.shared_dir = shared_dir
-        self.pair_dir = pair_dir
-        self.cleanup = cleanup
-        self.cpu_count = multiprocessing.cpu_count()
-        self.bucket_name = 'bd2k-{}'.format(os.path.basename(__file__).split('.')[0])
-
-    def get_input_path(self, name):
-        """
-        Accepts filename. Downloads if not present. returns path to file.
-        """
-        # Get path to file
-        shared = name != 'tumor.bam' and name != 'normal.bam'
-        dir_path = self.shared_dir if shared else self.pair_dir
-        file_path = os.path.join(dir_path, name)
-
-        # Create necessary directories if not present
-        self.mkdir_p(dir_path)
-
-        # Check if file exists, download if not present
-        if not os.path.exists(file_path):
-            try:
-                subprocess.check_call(['curl', '-fs', self.input_URLs[name], '-o', file_path])
-            except subprocess.CalledProcessError:
-                raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL')
-            except OSError:
-                raise RuntimeError('Failed to find "curl". Install via "apt-get install curl"')
-
-        assert os.path.exists(file_path)
-
-        return file_path
-
-    def get_intermediate_path(self, name, return_path=True):
-
-        # Get path to file
-        shared = '.fai' in name or '.dict' in name
-        dir_path = self.shared_dir if shared else self.pair_dir
-        file_path = os.path.join(dir_path, name)
-
-        # Create necessary directories if not present
-        self.mkdir_p(dir_path)
-
-        # Check if file exists, download if not present from s3
-        if not os.path.exists(file_path):
-            try:
-                conn = boto.connect_s3()
-                bucket = conn.get_bucket(self.bucket_name)
-                k = Key(bucket)
-                k.name = file_path[len(self.local_dir):].strip('//')
-            except:
-                raise RuntimeError('Could not connect to S3 and retrieve bucket: {}'.format(self.bucket_name))
-
-            try:
-                k.get_contents_to_filename(file_path)
-            except:
-                raise RuntimeError('Contents from S3 could not be written to: {}'.format(file_path))
-
-        if return_path:
-            return file_path
-
-    def upload_to_s3(self, file_path):
-        """
-        file should be the path to the file, ex:  /mnt/script/uuid4/pair/foo.vcf
-        Files will be uploaded to: s3://bd2k-<script_name>/<UUID4> if shared
-                              and: s3://bd2k-<script_name>/<UUID4>/<pair> if specific to that T/N pair.
-        :param file_path: str
-        """
-        # Create S3 Object
-        conn = boto.connect_s3()
-
-        # Set bucket to bd2k-<script_name>
-        try:
-            bucket = conn.get_bucket(self.bucket_name)
-        except S3ResponseError as e:
-            if e.error_code == 'NoSuchBucket':
-                bucket = conn.create_bucket(self.bucket_name)
-            else:
-                raise e
-
-        # Create Key Object -- reference intermediates placed in bucket root, all else in s3://bucket/<pair>
-        k = Key(bucket)
-        if not os.path.exists(file_path):
-            raise RuntimeError('File at path: {}, does not exist'.format(file_path))
-
-        # Derive the virtual folder and path for S3
-        k.name = file_path[len(self.local_dir):].strip('//')
-
-        # If file_size > 1Gb then upload via multi-part
-        file_size = os.path.getsize(file_path)
-        if (file_size * 1e-9) > 1:
-            # http://boto.readthedocs.org/en/latest/s3_tut.html#storing-large-data
-            mp = bucket.initiate_multipart_upload(k.name)
-            chunk_size = 50000000
-            chunk_count = int(math.ceil(file_size / float(chunk_size)))
-            try:
-                for i in range(chunk_count):
-                    offset = chunk_size * i
-                    bytes = min(chunk_size, file_size - offset)
-                    with FileChunkIO(file_path, 'r', offset=offset, bytes=bytes) as fp:
-                        mp.upload_part_from_file(fp, part_num=i + 1)
-            except:
-                mp.cancel_upload()
-            else:
-                mp.complete_upload()
-
-        else:
-            # Upload to S3 directly
-            try:
-                k.set_contents_from_filename(file_path)
-            except:
-                raise RuntimeError('File at path: {}, could not be uploaded to S3'.format(file_path))
-
-    @staticmethod
-    def mkdir_p(path):
-        """
-        The equivalent of mkdir -p
-        https://github.com/BD2KGenomics/bd2k-python-lib/blob/master/src/bd2k/util/files.py
-        """
-        try:
-            os.makedirs(path)
-        except OSError as exc:
-            if exc.errno == errno.EEXIST and os.path.isdir(path):
-                pass
-            else:
-                raise
-
-'''
 
 
 def main():
