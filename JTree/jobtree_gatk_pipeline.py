@@ -88,10 +88,10 @@ def build_parser():
 class SupportGATK(object):
     def __init__(self, input_urls, args, cleanup=False):
         self.input_urls = input_urls
-        self.input_URLs = args
+        self.args = args
         self.cleanup = cleanup
         self.cpu_count = multiprocessing.cpu_count()
-        self.work_dir = os.path.join(str(args.work_dir),
+        self.work_dir = os.path.join(str(self.args.work_dir),
                                      'bd2k-{}'.format(os.path.basename(__file__).split('.')[0]),
                                      str(uuid.uuid4()))
 
@@ -108,7 +108,7 @@ class SupportGATK(object):
         # Check if file exists, download if not presente
         if not os.path.exists(file_path):
             try:
-                subprocess.check_call(['curl', '-fs', self.input_URLs[name], '-o', file_path])
+                subprocess.check_call(['curl', '-fs', self.input_urls[name], '-o', file_path])
             except subprocess.CalledProcessError:
                 raise RuntimeError('\nNecessary file could not be acquired: {}. Check input URL')
             except OSError:
