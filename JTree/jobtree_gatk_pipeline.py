@@ -601,8 +601,9 @@ def teardown(target, gatk):
 def read_and_rename_global_file(target, fileStoreId, new_extension, diff_name=None):
     name = target.readGlobalFile(fileStoreId)
     new_name = ( name if diff_name is None else diff_name ) + new_extension
-    os.rename(name, diff_name)
+    os.rename(name, new_name)
     return new_name
+
 
 def main():
 
