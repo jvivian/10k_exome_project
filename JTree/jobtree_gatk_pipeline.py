@@ -233,7 +233,7 @@ def normal_rtc(target, gatk):
     normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
     normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'normal.intervals')
@@ -274,7 +274,7 @@ def tumor_rtc(target, gatk):
     tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
     tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'tumor.intervals')
@@ -305,7 +305,7 @@ def normal_ir(target, gatk):
     phase_vcf = read_and_rename_global_file(target, gatk.phase_vcf, '.vcf')
     mills_vcf = read_and_rename_global_file(target, gatk.mills_vcf, '.vcf')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
     normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
     normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
@@ -342,7 +342,7 @@ def tumor_ir(target, gatk):
     phase_vcf = read_and_rename_global_file(target, gatk.phase_vcf, '.vcf')
     mills_vcf = read_and_rename_global_file(target, gatk.mills_vcf, '.vcf')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
     tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
     tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
@@ -400,7 +400,7 @@ def normal_br(target, gatk):
     # Retrieve paths via FileStoreID
     gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
     normal_indel_bam = read_and_rename_global_file(target, gatk.normal_indel_bam, '.bam')
     normal_indel_bai = read_and_rename_global_file(target, gatk.normal_indel_bai, '.bai', normal_indel_bam)
@@ -438,7 +438,7 @@ def tumor_br(target, gatk):
     # Retrieve paths via FileStoreID
     gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
     tumor_indel_bam = read_and_rename_global_file(target, gatk.tumor_indel_bam, '.bam')
     tumor_indel_bai = read_and_rename_global_file(target, gatk.tumor_indel_bai, '.bai', tumor_indel_bam)
@@ -469,7 +469,7 @@ def normal_pr(target, gatk):
     """
     gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
     normal_indel_bam = read_and_rename_global_file(target, gatk.normal_indel_bam, '.bam')
     normal_indel_bai = read_and_rename_global_file(target, gatk.normal_indel_bai, '.bai', normal_indel_bam)
@@ -502,7 +502,7 @@ def tumor_pr(target, gatk):
     # Retrieve paths via FileStoreID
     gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
     tumor_indel_bam = read_and_rename_global_file(target, gatk.tumor_indel_bam, '.bam')
     tumor_indel_bai = read_and_rename_global_file(target, gatk.tumor_indel_bai, '.bai', tumor_indel_bam)
@@ -557,7 +557,7 @@ def mutect(target, gatk):
     tumor_bqsr_bai = read_and_rename_global_file(target, gatk.tumor_bqsr_bai, '.bai', tumor_bqsr_bam)
     dbsnp_vcf = read_and_rename_global_file(target, gatk.dbsnb_vcf, '.vcf')
     ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
 
     # Output files
