@@ -233,11 +233,7 @@ def normal_rtc(target, gatk):
     normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
     normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-
-    with open('normal_RTC_log.txt', 'w') as f:
-        f.write('Ref path: {}\ndict path: {}\nlistdir: {}\n'.format(ref_fasta, ref_dict, os.listdir(os.path.split(ref_fasta)[0])))
-        f.write('\nRef Exists: {}\ndict exists: {}'.format(os.path.exists(ref_fasta), os.path.exists(ref_dict)))
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'normal.intervals')
@@ -278,11 +274,7 @@ def tumor_rtc(target, gatk):
     tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
     tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
     ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-
-    with open('tumor_RTC_log.txt', 'w') as f:
-        f.write('Ref path: {}\ndict path: {}\nlistdir: {}\n'.format(ref_fasta, ref_dict, os.listdir(os.path.split(ref_fasta)[0])))
-        f.write('\nRef Exists: {}\ndict exists: {}'.format(os.path.exists(ref_fasta), os.path.exists(ref_dict)))
+    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'tumor.intervals')
@@ -608,7 +600,7 @@ def teardown(target, gatk):
 
 def read_and_rename_global_file(target, fileStoreId, new_extension, diff_name=None):
     name = target.readGlobalFile(fileStoreId)
-    new_name = (name if diff_name is None else diff_name) + new_extension
+    new_name = os.path.splitext(name if diff_name is None else diff_name)[0] + new_extension
     os.rename(name, new_name)
     return new_name
 
