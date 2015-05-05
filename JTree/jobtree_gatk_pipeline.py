@@ -51,6 +51,8 @@ import os
 import subprocess
 import uuid
 
+from collections import namedtuple
+
 from jobTree.src.stack import Stack
 from jobTree.src.target import Target
 
@@ -87,18 +89,21 @@ class SupportGATK(object):
     def __init__(self, target, args, input_urls, symbolic_input_names, cleanup=False):
         self.input_urls = input_urls
         self.args = args
-        self.ids = {}
         self.cleanup = cleanup
         self.cpu_count = multiprocessing.cpu_count()
         self.work_dir = os.path.join(str(self.args.work_dir),
                                      'bd2k-{}'.format(os.path.basename(__file__).split('.')[0]),
                                      str(uuid.uuid4()))
 
-        # Construct dictionary of FileStoreIDs
+        # Construct dictionary of FileStoreIDs. TODO: Ask Hannes if this is the easiest way to create dynamic namedtuple
         # Key = symbolic name for input
         # Value = FileStoreID.  This FileStoreID is linked to a file via target.updateGlobalFile()
+        ids = {}
         for name in symbolic_input_names:
-            self.ids[name] = target.getEmptyFileStoreID()
+            ids[name] = target.getEmptyFileStoreID()
+
+        # Convert to named_tuple
+        self.ids = namedtuple('GenericDict', ids.keys())(**ids)
 
     def unavoidable_download_method(self, name):
         """
@@ -147,6 +152,7 @@ def start_node(target, args, input_urls, symbolic_input_names):
 
     ref_path = gatk.unavoidable_download_method('reference.fasta')
     target.updateGlobalFile(gatk.ids['ref_fasta'], ref_path)
+    target.updateGlobalFile(gatk.ids.ref_fasta, ref_path)
 
     # Create index file for reference genome (.fai)
     try:
@@ -166,9 +172,9 @@ def start_node(target, args, input_urls, symbolic_input_names):
     except OSError:
         raise RuntimeError('\nFailed to find "picard". \nInstall via "apt-get install picard-tools')
 
-    # create FileStoreIDs
-    target.updateGlobalFile(gatk.ids['ref_fai'], ref_path + '.fai')
-    target.updateGlobalFile(gatk.ids['ref_dict'], os.path.splitext(ref_path)[0] + '.dict')
+    # Update FileStoreIDs
+    target.updateGlobalFile(gatk.ids.ref_fai, ref_path + '.fai')
+    target.updateGlobalFile(gatk.ids.ref_dict, os.path.splitext(ref_path)[0] + '.dict')
 
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
@@ -182,7 +188,7 @@ def normal_index(target, gatk):
     """
     # Retrieve input bam
     normal_path = gatk.unavoidable_download_method('normal.bam')
-    gatk.normal_bam = target.writeGlobalFile(normal_path)
+    target.updateGlobalFile(gatk.ids.normal_bam, normal_path)
 
     # Create index file for normal.bam (.bai)
     try:
@@ -192,8 +198,8 @@ def normal_index(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
 
-    # Create FileStoreIDs for output
-    gatk.normal_bai = target.writeGlobalFile(normal_path + '.bai')
+    # Update FileStoreID for output
+    target.updateGlobalFile(gatk.ids.normal_bai, normal_path + '.bai')
 
     # Spawn child
     target.addChildTargetFn(normal_rtc, (gatk,))
@@ -205,7 +211,7 @@ def tumor_index(target, gatk):
     """
     # Retrieve input bam
     tumor_path = gatk.unavoidable_download_method('tumor.bam')
-    gatk.tumor_bam = target.writeGlobalFile(tumor_path)
+    target.updateGlobalFile(gatk.ids.tumor_bam, tumor_path)
 
     # Create index file for normal.bam (.bai)
     try:
@@ -216,7 +222,7 @@ def tumor_index(target, gatk):
         raise RuntimeError('Failed to find "samtools". Install via "apt-get install samtools"')
 
     # Create FileStoreID for output
-    gatk.tumor_bai = target.writeGlobalFile(tumor_path + '.bai')
+    target.updateGlobalFile(gatk.ids.tumor_bai, tumor_path + '.bai')
 
     # Spawn child
     target.addChildTargetFn(tumor_rtc, (gatk,))
@@ -231,17 +237,17 @@ def normal_rtc(target, gatk):
     phase_path = gatk.unavoidable_download_method('phase.vcf')
     mills_path = gatk.unavoidable_download_method('mills.vcf')
 
-    # Store in FileStore
-    gatk.gatk_jar = target.writeGlobalFile(gatk_path)
-    gatk.phase_vcf = target.writeGlobalFile(phase_path)
-    gatk.mills_vcf = target.writeGlobalFile(mills_path)
+    # Update FileStore
+    target.updateGlobalFile(gatk.ids.gatk_jar, gatk_path)
+    target.updateGlobalFile(gatk.ids.phase_vcf, phase_path)
+    target.updateGlobalFile(gatk.ids.mills_vcf, mills_path)
 
     # Retrieve paths for files not in FileStore
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
-    normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    normal_bam = read_and_rename_global_file(target, gatk.ids.normal_bam, '.bam')
+    normal_bai = read_and_rename_global_file(target, gatk.ids.normal_bai, '.bai', normal_bam)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'normal.intervals')
@@ -257,7 +263,7 @@ def normal_rtc(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStore ID for output
-    gatk.normal_intervals = target.writeGlobalFile(output)
+    target.updateGlobalFile(gatk.ids.normal_intervals, output)
 
     # Spawn Child
     target.addChildTargetFn(normal_ir, (gatk,))
@@ -272,17 +278,17 @@ def tumor_rtc(target, gatk):
     phase_path = gatk.unavoidable_download_method('phase.vcf')
     mills_path = gatk.unavoidable_download_method('mills.vcf')
 
-    # Store in FileStore
-    gatk.gatk_jar = target.writeGlobalFile(gatk_path)
-    gatk.phase_vcf = target.writeGlobalFile(phase_path)
-    gatk.mills_vcf = target.writeGlobalFile(mills_path)
+    # Update FileStore
+    target.updateGlobalFile(gatk.ids.gatk_jar, gatk_path)
+    target.updateGlobalFile(gatk.ids.phase_vcf, phase_path)
+    target.updateGlobalFile(gatk.ids.mills_vcf, mills_path)
 
     # Retrieve paths for files not in FileStore
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
-    tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    tumor_bam = read_and_rename_global_file(target, gatk.ids.tumor_bam, '.bam')
+    tumor_bai = read_and_rename_global_file(target, gatk.ids.tumor_bai, '.bai', tumor_bam)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
 
     # Output File
     output = os.path.join(gatk.work_dir, 'tumor.intervals')
@@ -298,7 +304,7 @@ def tumor_rtc(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.tumor_intervals = target.writeGlobalFile(output)
+    target.updateGlobalFile(gatk.ids.tumor_intervals, output)
 
     # Spawn Child
     target.addChildTargetFn(tumor_ir, (gatk,))
@@ -309,15 +315,15 @@ def normal_ir(target, gatk):
     Creates realigned normal bams
     """
     # Retrieve paths from FileStoreID
-    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
-    phase_vcf = read_and_rename_global_file(target, gatk.phase_vcf, '.vcf')
-    mills_vcf = read_and_rename_global_file(target, gatk.mills_vcf, '.vcf')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    normal_bam = read_and_rename_global_file(target, gatk.normal_bam, '.bam')
-    normal_bai = read_and_rename_global_file(target, gatk.normal_bai, '.bai', normal_bam)
-    normal_intervals = read_and_rename_global_file(target, gatk.normal_intervals, '.intervals')
+    gatk_jar = read_and_rename_global_file(target, gatk.ids.gatk_jar, '.jar')
+    phase_vcf = read_and_rename_global_file(target, gatk.ids.phase_vcf, '.vcf')
+    mills_vcf = read_and_rename_global_file(target, gatk.ids.mills_vcf, '.vcf')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    normal_bam = read_and_rename_global_file(target, gatk.ids.normal_bam, '.bam')
+    normal_bai = read_and_rename_global_file(target, gatk.ids.normal_bai, '.bai', normal_bam)
+    normal_intervals = read_and_rename_global_file(target, gatk.ids.normal_intervals, '.intervals')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.indel.bam')
@@ -334,8 +340,8 @@ def normal_ir(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.normal_indel_bam = target.writeGlobalFile(output)
-    gatk.normal_indel_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
+    target.updateGlobalFile(gatk.ids.normal_indel_bam, output)
+    target.updateGlobalFile(gatk.ids.normal_indel_bai, os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(normal_cleanup_bam, (gatk,))
@@ -346,15 +352,15 @@ def tumor_ir(target, gatk):
     Creates realigned tumor bams
     """
     # Retrieve paths from FileStoreID
-    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
-    phase_vcf = read_and_rename_global_file(target, gatk.phase_vcf, '.vcf')
-    mills_vcf = read_and_rename_global_file(target, gatk.mills_vcf, '.vcf')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    tumor_bam = read_and_rename_global_file(target, gatk.tumor_bam, '.bam')
-    tumor_bai = read_and_rename_global_file(target, gatk.tumor_bai, '.bai', tumor_bam)
-    tumor_intervals = read_and_rename_global_file(target, gatk.tumor_intervals, '.intervals')
+    gatk_jar = read_and_rename_global_file(target, gatk.ids.gatk_jar, '.jar')
+    phase_vcf = read_and_rename_global_file(target, gatk.ids.phase_vcf, '.vcf')
+    mills_vcf = read_and_rename_global_file(target, gatk.ids.mills_vcf, '.vcf')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    tumor_bam = read_and_rename_global_file(target, gatk.ids.tumor_bam, '.bam')
+    tumor_bai = read_and_rename_global_file(target, gatk.ids.tumor_bai, '.bai', tumor_bam)
+    tumor_intervals = read_and_rename_global_file(target, gatk.ids.tumor_intervals, '.intervals')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.indel.bam')
@@ -371,8 +377,8 @@ def tumor_ir(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.tumor_indel_bam = target.writeGlobalFile(output)
-    gatk.tumor_indel_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
+    target.updateGlobalFile(gatk.ids.tumor_indel_bam, output)
+    target.updateGlobalFile(gatk.ids.tumor_indel_bai, os.path.splitext(output)[0] + '.bai')
 
     # Spawn Child
     target.addChildTargetFn(tumor_cleanup_start, (gatk,))
@@ -403,15 +409,15 @@ def normal_br(target, gatk):
     dbsnp_path = gatk.unavoidable_download_method('dbsnp.vcf')
 
     # Assign FileStoreID
-    gatk.dbsnp_vcf = target.writeGlobalFile(dbsnp_path)
+    target.updateGlobalFile(gatk.ids.dbsnp_vcf, dbsnp_path)
 
     # Retrieve paths via FileStoreID
-    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    normal_indel_bam = read_and_rename_global_file(target, gatk.normal_indel_bam, '.bam')
-    normal_indel_bai = read_and_rename_global_file(target, gatk.normal_indel_bai, '.bai', normal_indel_bam)
+    gatk_jar = read_and_rename_global_file(target, gatk.ids.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    normal_indel_bam = read_and_rename_global_file(target, gatk.ids.normal_indel_bam, '.bam')
+    normal_indel_bai = read_and_rename_global_file(target, gatk.ids.normal_indel_bai, '.bai', normal_indel_bam)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.recal.table')
@@ -426,8 +432,8 @@ def normal_br(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
-    # Create FileStoreID for output
-    gatk.normal_recal = target.writeGlobalFile(output)
+    # Update FileStoreID for output
+    target.updateGlobalFile(gatk.ids.normal_recal, output)
 
     # Spawn Child
     target.addChildTargetFn(normal_pr, (gatk,))
@@ -441,15 +447,15 @@ def tumor_br(target, gatk):
     dbsnp_path = gatk.unavoidable_download_method('dbsnp.vcf')
 
     # Assign FileStoreID
-    gatk.dbsnp_vcf = target.writeGlobalFile(dbsnp_path)
+    target.updateGlobalFile(gatk.ids.dbsnp_vcf, dbsnp_path)
 
     # Retrieve paths via FileStoreID
-    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    tumor_indel_bam = read_and_rename_global_file(target, gatk.tumor_indel_bam, '.bam')
-    tumor_indel_bai = read_and_rename_global_file(target, gatk.tumor_indel_bai, '.bai', tumor_indel_bam)
+    gatk_jar = read_and_rename_global_file(target, gatk.ids.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    tumor_indel_bam = read_and_rename_global_file(target, gatk.ids.tumor_indel_bam, '.bam')
+    tumor_indel_bai = read_and_rename_global_file(target, gatk.ids.tumor_indel_bai, '.bai', tumor_indel_bam)
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.recal.table')
@@ -464,8 +470,8 @@ def tumor_br(target, gatk):
     except OSError:
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
-    # Create FileStoreID for output
-    gatk.tumor_recal = target.writeGlobalFile(output)
+    # Update FileStoreID for output
+    target.updateGlobalFile(gatk.ids.tumor_recal, output)
 
     # Spawn Child
     target.addChildTargetFn(tumor_pr, (gatk,))
@@ -475,13 +481,13 @@ def normal_pr(target, gatk):
     """
     Create normal.bqsr.bam
     """
-    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    normal_indel_bam = read_and_rename_global_file(target, gatk.normal_indel_bam, '.bam')
-    normal_indel_bai = read_and_rename_global_file(target, gatk.normal_indel_bai, '.bai', normal_indel_bam)
-    normal_recal = read_and_rename_global_file(target, gatk.normal_recal, '.table')
+    gatk_jar = read_and_rename_global_file(target, gatk.ids.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    normal_indel_bam = read_and_rename_global_file(target, gatk.ids.normal_indel_bam, '.bam')
+    normal_indel_bai = read_and_rename_global_file(target, gatk.ids.normal_indel_bai, '.bai', normal_indel_bam)
+    normal_recal = read_and_rename_global_file(target, gatk.ids.normal_recal, '.table')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'normal.bqsr.bam')
@@ -497,8 +503,8 @@ def normal_pr(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.normal_bqsr_bam = target.writeGlobalFile(output)
-    gatk.normal_bqsr_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
+    target.updateGlobalFile(gatk.ids.normal_bqsr_bam, output)
+    target.updateGlobalFile(gatk.ids.normal_bqsr_bai, os.path.splitext(output)[0] + '.bai')
 
     target.addChildTargetFn(normal_indel_cleaup, (gatk,))
 
@@ -508,13 +514,13 @@ def tumor_pr(target, gatk):
     Create tumor.bqsr.bam
     """
     # Retrieve paths via FileStoreID
-    gatk_jar = read_and_rename_global_file(target, gatk.gatk_jar, '.jar')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
-    tumor_indel_bam = read_and_rename_global_file(target, gatk.tumor_indel_bam, '.bam')
-    tumor_indel_bai = read_and_rename_global_file(target, gatk.tumor_indel_bai, '.bai', tumor_indel_bam)
-    tumor_recal = read_and_rename_global_file(target, gatk.tumor_recal, '.table')
+    gatk_jar = read_and_rename_global_file(target, gatk.ids.gatk_jar, '.jar')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
+    tumor_indel_bam = read_and_rename_global_file(target, gatk.ids.tumor_indel_bam, '.bam')
+    tumor_indel_bai = read_and_rename_global_file(target, gatk.ids.tumor_indel_bai, '.bai', tumor_indel_bam)
+    tumor_recal = read_and_rename_global_file(target, gatk.ids.tumor_recal, '.table')
 
     # Output file
     output = os.path.join(gatk.work_dir, 'tumor.bqsr.bam')
@@ -530,8 +536,8 @@ def tumor_pr(target, gatk):
         raise RuntimeError('Failed to find "java" or gatk_jar')
 
     # Create FileStoreID for output
-    gatk.tumor_bqsr_bam = target.writeGlobalFile(output)
-    gatk.tumor_bqsr_bai = target.writeGlobalFile(os.path.splitext(output)[0] + '.bai')
+    target.updateGlobalFile(gatk.ids.tumor_bqsr_bam, output)
+    target.updateGlobalFile(gatk.ids.tumor_bqsr_bai, os.path.splitext(output)[0] + '.bai')
 
     target.addChildTargetFn(tumor_indel_cleanup, (gatk,))
 
@@ -555,18 +561,18 @@ def mutect(target, gatk):
     mutect_path = gatk.unavoidable_download_method('gatk.jar')
 
     # Add to FileStore
-    gatk.cosmic_vcf = target.writeGlobalFile(cosmic_path)
-    gatk.mutect_jar = target.writeGlobalFile(mutect_path)
+    target.updateGlobalFile(gatk.ids.cosmic_vcf, cosmic_path)
+    target.updateGlobalFile(gatk.ids.mutect_jar, mutect_path)
 
     # Retrieve paths from FileStore
-    normal_bqsr_bam = read_and_rename_global_file(target, gatk.normal_bqsr_bam, '.bam')
-    normal_bqsr_bai = read_and_rename_global_file(target, gatk.normal_bqsr_bai, '.bai', normal_bqsr_bam)
-    tumor_bqsr_bam = read_and_rename_global_file(target, gatk.tumor_bqsr_bam, '.bam')
-    tumor_bqsr_bai = read_and_rename_global_file(target, gatk.tumor_bqsr_bai, '.bai', tumor_bqsr_bam)
-    dbsnp_vcf = read_and_rename_global_file(target, gatk.dbsnb_vcf, '.vcf')
-    ref_fasta = read_and_rename_global_file(target, gatk.ref_fasta, '.fasta')
-    ref_fai = read_and_rename_global_file(target, gatk.ref_fai, '.fasta.fai', ref_fasta)
-    ref_dict = read_and_rename_global_file(target, gatk.ref_dict, '.dict', ref_fasta)
+    normal_bqsr_bam = read_and_rename_global_file(target, gatk.ids.normal_bqsr_bam, '.bam')
+    normal_bqsr_bai = read_and_rename_global_file(target, gatk.ids.normal_bqsr_bai, '.bai', normal_bqsr_bam)
+    tumor_bqsr_bam = read_and_rename_global_file(target, gatk.ids.tumor_bqsr_bam, '.bam')
+    tumor_bqsr_bai = read_and_rename_global_file(target, gatk.ids.tumor_bqsr_bai, '.bai', tumor_bqsr_bam)
+    dbsnp_vcf = read_and_rename_global_file(target, gatk.ids.dbsnb_vcf, '.vcf')
+    ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
+    ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
+    ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
 
     # Output files
     normal_uuid = gatk.input_URLs['normal.bam'].split('/')[-1].split('.')[0]
@@ -589,9 +595,9 @@ def mutect(target, gatk):
         raise RuntimeError('Failed to find "java" or mutect.jar')
 
     # Create FileStoreID for output
-    gatk.mutect_vcf = target.writeGlobalFile(output)
-    gatk.mutect_out = target.writeGlobalFile(mut_out)
-    gatk.mutect_cov = target.writeGlobalFile(mut_cov)
+    target.updateGlobalFile(gatk.ids.mutect_vcf, output)
+    target.updateGlobalFile(gatk.ids.mutect_out, mut_out)
+    target.updateGlobalFile(gatk.ids.mutect_cov, mut_cov)
 
     # Spawn Child
     if gatk.cleanup:
@@ -634,7 +640,7 @@ def main():
                        'gatk_jar', 'mills_vcf', 'phase_vcf', 'normal_intervals', 'tumor_intervals', 'dbsnp_vcf',
                        'normal_indel_bam', 'normal_indel_bai', 'tumor_indel_bam', 'tumor_indel_bai', 'normal_recal',
                        'normal_bqsr_bam', 'normal_bqsr_bai', 'tumor_bqsr_bam', 'tumor_bqsr_bai','tumor_recal',
-                       'cosmic_vcf', 'mutect_jar']
+                       'cosmic_vcf', 'mutect_jar', 'mutect_vcf', 'mutect_out', 'mutect_cov']
 
     # Create JobTree Stack which launches the jobs starting at the "Start Node"
     i = Stack(Target.makeTargetFn(start_node, (args, input_urls, symbolic_inputs))).startJobTree(args)
