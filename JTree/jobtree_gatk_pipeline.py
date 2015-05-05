@@ -151,7 +151,6 @@ def start_node(target, args, input_urls, symbolic_input_names):
     gatk = SupportGATK(target, args, input_urls, symbolic_input_names, cleanup=True)
 
     ref_path = gatk.unavoidable_download_method('reference.fasta')
-    target.updateGlobalFile(gatk.ids['ref_fasta'], ref_path)
     target.updateGlobalFile(gatk.ids.ref_fasta, ref_path)
 
     # Create index file for reference genome (.fai)
