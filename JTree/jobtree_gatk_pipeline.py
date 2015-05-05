@@ -82,6 +82,25 @@ def read_and_rename_global_file(target, file_store_id, new_extension, diff_name=
     return new_name
 
 
+class HannesDict(dict):
+    """
+    >>> d = HannesDict(bam=12)
+    >>> isinstance(d, dict)
+    True
+    >>> d.foo = 187
+    >>> d['foo']
+    187
+    >>> d.bam
+    12
+    """
+
+    def __getattr__(self, name):
+        return self[name]
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+
 class SupportGATK(object):
     """
     This support class encapsulates information that is used by all children/follow-ons in the GATK pipeline.
@@ -98,12 +117,7 @@ class SupportGATK(object):
         # Construct dictionary of FileStoreIDs. TODO: Ask Hannes if this is the easiest way to create dynamic namedtuple
         # Key = symbolic name for input
         # Value = FileStoreID.  This FileStoreID is linked to a file via target.updateGlobalFile()
-        ids = {}
-        for name in symbolic_input_names:
-            ids[name] = target.getEmptyFileStoreID()
-
-        # Convert to named_tuple
-        self.ids = namedtuple('GenericDict', ids.keys())(**ids)
+        self.ids = HannesDict( (name, target.getEmptyFileStoreID()) for name in symbolic_input_names )
 
     def unavoidable_download_method(self, name):
         """
