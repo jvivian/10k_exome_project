@@ -31,18 +31,9 @@ Tree Structure of GATK Pipeline
 =========================================================================
 :Directory Structure:
 
-local_dir = /mnt/
+work_dir = '/mnt/bd2k-<script name>/<UUID4>/'
 
-# For "shared" input files
-shared_dir = <local_dir>/<script_name>/<UUID4>
-
-# For files specific to a tumor/normal pair
-pair_dir = <local_dir>/<script_name>/<UUID4>/<pair>/
-    <pair> is defined as UUID-normal:UUID-tumor
-
-files are uploaded to:
-    s3://bd2k-<script>/<UUID4>/ if shared (.fai/.dict)
-    s3://bd2k-<script>/<UUID4>/<pair> if specific to that T/N pair.
+Each invocation of the script gets its own directory (via randomly generated UUID4)
 
 =========================================================================
 :Dependencies:
@@ -50,12 +41,9 @@ files are uploaded to:
 curl            - apt-get install curl
 samtools        - apt-get install samtools
 picard-tools    - apt-get install picard-tools
-boto            - pip install boto
-FileChunkIO     - pip install FileChunkIO
 jobTree         - https://github.com/benedictpaten/jobTree
 Active Internet Connection (Boto)
 """
-
 import argparse
 import errno
 import multiprocessing
@@ -85,15 +73,32 @@ def build_parser():
     return parser
 
 
+def read_and_rename_global_file(target, file_store_id, new_extension, diff_name=None):
+    name = target.readGlobalFile(file_store_id)
+    new_name = os.path.splitext(name if diff_name is None else diff_name)[0] + new_extension
+    os.rename(name, new_name)
+    return new_name
+
+
 class SupportGATK(object):
-    def __init__(self, input_urls, args, cleanup=False):
+    """
+    This support class encapsulates information that is used by all children/follow-ons in the GATK pipeline.
+    """
+    def __init__(self, target, args, input_urls, symbolic_input_names, cleanup=False):
         self.input_urls = input_urls
         self.args = args
+        self.ids = {}
         self.cleanup = cleanup
         self.cpu_count = multiprocessing.cpu_count()
         self.work_dir = os.path.join(str(self.args.work_dir),
                                      'bd2k-{}'.format(os.path.basename(__file__).split('.')[0]),
                                      str(uuid.uuid4()))
+
+        # Construct dictionary of FileStoreIDs
+        # Key = symbolic name for input
+        # Value = FileStoreID.  This FileStoreID is linked to a file via target.updateGlobalFile()
+        for name in symbolic_input_names:
+            self.ids[name] = target.getEmptyFileStoreID()
 
     def unavoidable_download_method(self, name):
         """
@@ -133,12 +138,15 @@ class SupportGATK(object):
                 raise
 
 
-def start_node(target, gatk):
+def start_node(target, args, input_urls, symbolic_input_names):
     """
     Create .dict/.fai for reference and start children/follow-on
     """
+    # Construct instance of Support class that will be passed to children / follow-ons
+    gatk = SupportGATK(target, args, input_urls, symbolic_input_names, cleanup=True)
+
     ref_path = gatk.unavoidable_download_method('reference.fasta')
-    gatk.ref_fasta = target.writeGlobalFile(ref_path)
+    target.updateGlobalFile(gatk.ids['ref_fasta'], ref_path)
 
     # Create index file for reference genome (.fai)
     try:
@@ -159,8 +167,8 @@ def start_node(target, gatk):
         raise RuntimeError('\nFailed to find "picard". \nInstall via "apt-get install picard-tools')
 
     # create FileStoreIDs
-    gatk.ref_fai = target.writeGlobalFile(ref_path + '.fai')
-    gatk.ref_dict = target.writeGlobalFile(os.path.splitext(ref_path)[0] + '.dict')
+    target.updateGlobalFile(gatk.ids['ref_fai'], ref_path + '.fai')
+    target.updateGlobalFile(gatk.ids['ref_dict'], os.path.splitext(ref_path)[0] + '.dict')
 
     # Spawn children and follow-on
     target.addChildTargetFn(normal_index, (gatk,))
@@ -547,8 +555,8 @@ def mutect(target, gatk):
     mutect_path = gatk.unavoidable_download_method('gatk.jar')
 
     # Add to FileStore
-    cosmic_vcf = target.writeGlobalFile(cosmic_path)
-    mutect_jar = target.writeGlobalFile(mutect_path)
+    gatk.cosmic_vcf = target.writeGlobalFile(cosmic_path)
+    gatk.mutect_jar = target.writeGlobalFile(mutect_path)
 
     # Retrieve paths from FileStore
     normal_bqsr_bam = read_and_rename_global_file(target, gatk.normal_bqsr_bam, '.bam')
@@ -598,13 +606,6 @@ def teardown(target, gatk):
         os.remove(f)
 
 
-def read_and_rename_global_file(target, fileStoreId, new_extension, diff_name=None):
-    name = target.readGlobalFile(fileStoreId)
-    new_name = os.path.splitext(name if diff_name is None else diff_name)[0] + new_extension
-    os.rename(name, new_name)
-    return new_name
-
-
 def main():
 
     # Handle parser logic
@@ -613,14 +614,14 @@ def main():
     args = parser.parse_args()
 
     input_urls = {'reference.fasta': args.reference,
-              'normal.bam': args.normal,
-              'tumor.bam': args.tumor,
-              'phase.vcf': args.phase,
-              'mills.vcf': args.mills,
-              'dbsnp.vcf': args.dbsnp,
-              'cosmic.vcf': args.cosmic,
-              'gatk.jar': args.gatk,
-              'mutect.jar': args.mutect}
+                  'normal.bam': args.normal,
+                  'tumor.bam': args.tumor,
+                  'phase.vcf': args.phase,
+                  'mills.vcf': args.mills,
+                  'dbsnp.vcf': args.dbsnp,
+                  'cosmic.vcf': args.cosmic,
+                  'gatk.jar': args.gatk,
+                  'mutect.jar': args.mutect}
 
     # Ensure user supplied URLs to files and that BAMs are in the appropriate format
     for bam in [args.normal, args.tumor]:
@@ -628,13 +629,15 @@ def main():
             raise RuntimeError('{} BAM is not in the appropriate format: \
             UUID.normal.bam or UUID.tumor.bam'.format(str(bam).split('.')[1]))
 
-    gatk = SupportGATK(input_urls, args)
+    # Symbolic names for all inputs in the GATK pipeline
+    symbolic_inputs = ['ref_fasta', 'ref_fai', 'ref_dict', 'normal_bam', 'normal_bai', 'tumor_bam', 'tumor_bai',
+                       'gatk_jar', 'mills_vcf', 'phase_vcf', 'normal_intervals', 'tumor_intervals', 'dbsnp_vcf',
+                       'normal_indel_bam', 'normal_indel_bai', 'tumor_indel_bam', 'tumor_indel_bai', 'normal_recal',
+                       'normal_bqsr_bam', 'normal_bqsr_bai', 'tumor_bqsr_bam', 'tumor_bqsr_bai','tumor_recal',
+                       'cosmic_vcf', 'mutect_jar']
 
-    # Create JTree Stack
-    i = Stack(Target.makeTargetFn(start_node, (gatk,))).startJobTree(args)
-
-    #if i != 0:
-    #    raise RuntimeError("Failed Jobs")
+    # Create JobTree Stack which launches the jobs starting at the "Start Node"
+    i = Stack(Target.makeTargetFn(start_node, (args, input_urls, symbolic_inputs))).startJobTree(args)
 
 
 if __name__ == "__main__":
