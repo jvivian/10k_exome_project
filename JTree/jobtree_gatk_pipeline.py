@@ -617,8 +617,7 @@ def mutect(target, gatk):
 
 def teardown(target, gatk):
     # Remove files from local working directory
-    files = [os.path.join(gatk.work_dir, f) for f in os.listdir(gatk.work_dir)
-             if 'tumor.vcf' not in f and os.path.isfile(f)]
+    files = [os.path.join(gatk.work_dir, f) for f in os.listdir(gatk.work_dir) if 'tumor.vcf' not in f]
     for f in files:
         os.remove(f)
 
