@@ -51,8 +51,6 @@ import os
 import subprocess
 import uuid
 
-from collections import namedtuple
-
 from jobTree.src.stack import Stack
 from jobTree.src.target import Target
 
@@ -84,14 +82,12 @@ def read_and_rename_global_file(target, file_store_id, new_extension, diff_name=
 
 class HannesDict(dict):
     """
-    >>> d = HannesDict(bam=12)
+    >>> d = HannesDict()
     >>> isinstance(d, dict)
     True
     >>> d.foo = 187
     >>> d['foo']
     187
-    >>> d.bam
-    12
     """
     def __getattr__(self, name):
         try:
@@ -116,7 +112,7 @@ class SupportGATK(object):
                                      'bd2k-{}'.format(os.path.basename(__file__).split('.')[0]),
                                      str(uuid.uuid4()))
 
-        # Construct dictionary of FileStoreIDs. TODO: Ask Hannes if this is the easiest way to create dynamic namedtuple
+        # Special dictioanary that essentially acts as a namedtuple but is capable of being pickled
         # Key = symbolic name for input
         # Value = FileStoreID.  This FileStoreID is linked to a file via target.updateGlobalFile()
         self.ids = HannesDict( (name, target.getEmptyFileStoreID()) for name in symbolic_input_names )
@@ -573,7 +569,7 @@ def mutect(target, gatk):
     """
     # Download files not in FileStore
     cosmic_path = gatk.unavoidable_download_method('cosmic.vcf')
-    mutect_path = gatk.unavoidable_download_method('gatk.jar')
+    mutect_path = gatk.unavoidable_download_method('mutect.jar')
 
     # Add to FileStore
     target.updateGlobalFile(gatk.ids.cosmic_vcf, cosmic_path)
@@ -584,14 +580,14 @@ def mutect(target, gatk):
     normal_bqsr_bai = read_and_rename_global_file(target, gatk.ids.normal_bqsr_bai, '.bai', normal_bqsr_bam)
     tumor_bqsr_bam = read_and_rename_global_file(target, gatk.ids.tumor_bqsr_bam, '.bam')
     tumor_bqsr_bai = read_and_rename_global_file(target, gatk.ids.tumor_bqsr_bai, '.bai', tumor_bqsr_bam)
-    dbsnp_vcf = read_and_rename_global_file(target, gatk.ids.dbsnb_vcf, '.vcf')
+    dbsnp_vcf = read_and_rename_global_file(target, gatk.ids.dbsnp_vcf, '.vcf')
     ref_fasta = read_and_rename_global_file(target, gatk.ids.ref_fasta, '.fasta')
     ref_fai = read_and_rename_global_file(target, gatk.ids.ref_fai, '.fasta.fai', ref_fasta)
     ref_dict = read_and_rename_global_file(target, gatk.ids.ref_dict, '.dict', ref_fasta)
 
     # Output files
-    normal_uuid = gatk.input_URLs['normal.bam'].split('/')[-1].split('.')[0]
-    tumor_uuid = gatk.input_URLs['tumor.bam'].split('/')[-1].split('.')[0]
+    normal_uuid = gatk.input_urls['normal.bam'].split('/')[-1].split('.')[0]
+    tumor_uuid = gatk.input_urls['tumor.bam'].split('/')[-1].split('.')[0]
 
     output = os.path.join(gatk.work_dir, '{}-normal:{}-tumor.vcf'.format(normal_uuid, tumor_uuid))
     mut_out = os.path.join(gatk.work_dir, 'mutect.out')
